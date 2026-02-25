@@ -1164,84 +1164,108 @@ function getTvaAccount(tvaCode, debitAccNum, creditAccNum) {
   return null;
 }
 
-// ── T-FORM RENDERER ──
 // ── T-FORM + XML RENDERER ──
-// Helper: build XML string for one entry
+// Helper: build XML string for one entry — structure fidèle au XML réel Abacus
 function buildEntryXml(e, idx, total) {
-  const tvaInfo   = e.tvaCode ? TVA_MAPPING[e.tvaCode] : null;
-  const tvaAccNum = getTvaAccount(e.tvaCode, e.da.n, e.ca.n);
-  const hasTva    = e.tvaAmt > 0 && tvaAccNum;
-  const isDeduct  = tvaInfo && tvaInfo.dir === 'purchases';
-  const ttc       = e.amount + e.tvaAmt;
-  const taxAccXml = tvaAccNum || '';
-  const taxKeyAmt = hasTva ? `-${fmt(e.tvaAmt)}` : '0.00';
-  const amtTTC    = hasTva ? fmt(ttc) : fmt(e.amount);
+  const tvaInfo    = e.tvaCode ? TVA_MAPPING[e.tvaCode] : null;
+  const tvaAccNum  = getTvaAccount(e.tvaCode, e.da.n, e.ca.n);
+  // TaxData est TOUJOURS présent dans SingleInformation dès qu'un TaxCode existe,
+  // même si le taux est 0% (ex: code 126 export) ou si tvaAmt = 0
+  const hasTaxCode = !!e.tvaCode;
+  const hasTvaAmt  = e.tvaAmt > 0;
+  const isDeduct   = tvaInfo && tvaInfo.dir === 'purchases';
+  const ttc        = e.amount + e.tvaAmt;
+  const taxAccXml  = tvaAccNum || e.da.n; // CollectiveInformation: TaxAccount = compte principal si pas de TVA
+  const taxAccSI   = tvaAccNum || '0';    // SingleInformation: TaxAccount = sous-compte TVA ou 0
+  // KeyAmount dans TaxData = montant TVA NÉGATIF (déduit du TTC) ou 0.00 si taux 0%
+  const taxKeyAmt  = hasTvaAmt ? `-${fmt(e.tvaAmt)}` : '0.00';
+  const tvaRateStr = e.tvaCode ? (e.tvaRate || 0).toFixed(8) : '0.00000000';
+  const amtTTC     = fmt(ttc); // montant TTC dans les deux blocs
+  const amtRaw     = (ttc).toFixed(8); // format Abacus 8 décimales
 
-  const T  = (n) => `&lt;<span class="xt">${n}</span>&gt;`;
-  const TC = (n) => `&lt;/<span class="xt">${n}</span>&gt;`;
-  const TV = (n) => `&lt;<span class="xtva">${n}</span>&gt;`;
-  const TVC= (n) => `&lt;/<span class="xtva">${n}</span>&gt;`;
-  const v  = (s) => `<span class="xv">${s}</span>`;
-  const vt = (s) => `<span class="xtva">${s}</span>`;
-  const c  = (s) => `<span class="xc">${s}</span>`;
-  const D_ = `<span class="xh xd">D</span>`;
-  const C_ = `<span class="xh xcr">C</span>`;
+  // Helpers HTML
+  const T   = (n) => `&lt;<span class="xt">${n}</span>&gt;`;
+  const TC  = (n) => `&lt;/<span class="xt">${n}</span>&gt;`;
+  const TV  = (n) => `&lt;<span class="xtva">${n}</span>&gt;`;
+  const TVC = (n) => `&lt;/<span class="xtva">${n}</span>&gt;`;
+  const v   = (s) => `<span class="xv">${s}</span>`;
+  const vt  = (s) => `<span class="xtva">${s}</span>`;
+  const c   = (s) => `<span class="xc">${s}</span>`;
+  const D_  = `<span class="xh xd">D</span>`;
+  const C_  = `<span class="xh xcr">C</span>`;
 
-  return `${c('&lt;!-- ════ Écriture ' + (idx+1) + '/' + total + ' — ' + (e.desc||'') + ' — ' + e.date + ' ════ --&gt;')}
-${c('&lt;!-- ⚠️  FILTRE Python : ignorer si &lt;apt:Type&gt;Reversal&lt;/apt:Type&gt;             --&gt;')}
-${c('&lt;!--    Type=Reversal = écriture EXTOURNÉE (annulée/effacée) → exclure du solde --&gt;')}
-${c('&lt;!--    Seuls Type=Normal sont à intégrer dans les calculs de solde             --&gt;')}
-${T('apt:Entry')}
-
-  ${c('&lt;!-- ── CollectiveInformation ──────────────────────── --&gt;')}
-  ${c('&lt;!-- Compte PRINCIPAL — DebitCredit=D = débité --&gt;')}
-  ${T('apt:CollectiveInformation')}
-    ${T('apt:EntryType')}${v('S')}${TC('apt:EntryType')}  ${c('&lt;!-- S=simple, K=collectif --&gt;')}
-    ${T('apt:DebitCredit')}${D_}${TC('apt:DebitCredit')}
-    ${T('apt:EntryDate')}${v(e.date)}${TC('apt:EntryDate')}
-    ${T('apt:AmountData')}
-      ${T('apt:Currency')}${v('CHF')}${TC('apt:Currency')}
-      ${T('apt:Amount')}${v(amtTTC + '00000000')}${TC('apt:Amount')}  ${c('&lt;!-- TTC --&gt;')}
-    ${TC('apt:AmountData')}
-    ${T('apt:KeyAmount')}${v(amtTTC)}${TC('apt:KeyAmount')}
-    ${T('apt:Account')}${v(e.da.n)}${TC('apt:Account')}  ${c('&lt;!-- ' + e.da.name + ' --&gt;')}
-    ${hasTva
-      ? T('apt:TaxAccount') + vt(taxAccXml) + TC('apt:TaxAccount') + `  ${c('&lt;!-- sous-compte TVA --&gt;')}`
-      : T('apt:TaxAccount') + v(e.da.n) + TC('apt:TaxAccount')}
-    ${T('apt:Text1')}${v(e.desc||'')}${TC('apt:Text1')}  ${c('&lt;!-- description principale --&gt;')}
-    ${T('apt:Text2')}${v('')}${TC('apt:Text2')}  ${c('&lt;!-- description secondaire --&gt;')}
-  ${TC('apt:CollectiveInformation')}
-
-  ${c('&lt;!-- ── SingleInformation ──────────────────────────── --&gt;')}
-  ${c('&lt;!-- Compte CONTREPARTIE — peut être multiple si écriture collective --&gt;')}
-  ${T('apt:SingleInformation')}
-    ${T('apt:DebitCredit')}${C_}${TC('apt:DebitCredit')}  ${c('&lt;!-- C = crédité (contrepartie) --&gt;')}
-    ${T('apt:EntryDate')}${v(e.date)}${TC('apt:EntryDate')}
-    ${T('apt:AmountData')}
-      ${T('apt:Currency')}${v('CHF')}${TC('apt:Currency')}
-      ${T('apt:Amount')}${v(amtTTC + '00000000')}${TC('apt:Amount')}
-    ${TC('apt:AmountData')}
-    ${T('apt:KeyAmount')}${v(amtTTC)}${TC('apt:KeyAmount')}
-    ${T('apt:Account')}${v(e.ca.n)}${TC('apt:Account')}  ${c('&lt;!-- ' + e.ca.name + ' --&gt;')}
-    ${hasTva
-      ? T('apt:TaxAccount') + vt(taxAccXml) + TC('apt:TaxAccount') + `  ${c('&lt;!-- sous-compte TVA --&gt;')}`
-      : T('apt:TaxAccount') + v('0') + TC('apt:TaxAccount')}
-    ${hasTva ? `${TV('apt:TaxData')}
-      ${T('apt:TaxIncluded')}${vt('I')}${TC('apt:TaxIncluded')}  ${c('&lt;!-- I=incluse, E=exclusive --&gt;')}
+  // Bloc TaxData — toujours affiché si tvaCode présent, avec TOUS les champs réels
+  const taxDataBlock = hasTaxCode ? `
+    ${TV('apt:TaxData')}
+      ${T('apt:TaxIncluded')}${vt('I')}${TC('apt:TaxIncluded')}  ${c('&lt;!-- I = TVA incluse dans le montant --&gt;')}
       ${T('apt:TaxType')}${vt('1')}${TC('apt:TaxType')}
       ${T('apt:UseCode')}${vt('1')}${TC('apt:UseCode')}
       ${T('apt:AmountData')}
-        ${T('apt:Currency')}${v('CHF')}${TC('apt:Currency')}
-        ${T('apt:Amount')}${vt('0.00000000')}${TC('apt:Amount')}
+         ${T('apt:Currency')}${v('CHF')}${TC('apt:Currency')}
+         ${T('apt:Amount')}${vt('0.00000000')}${TC('apt:Amount')}  ${c('&lt;!-- toujours 0 ici, KeyAmount porte le vrai montant TVA --&gt;')}
       ${TC('apt:AmountData')}
-      ${T('apt:KeyAmount')}${vt(taxKeyAmt)}${TC('apt:KeyAmount')}  ${c('&lt;!-- montant TVA négatif = déduit du TTC --&gt;')}
-      ${T('apt:TaxRate')}${vt(e.tvaRate + '.00000000')}${TC('apt:TaxRate')}
+      ${T('apt:KeyAmount')}${vt(taxKeyAmt)}${TC('apt:KeyAmount')}  ${c('&lt;!-- montant TVA, négatif = déduit du TTC --&gt;')}
+      ${T('apt:TaxRate')}${vt(tvaRateStr)}${TC('apt:TaxRate')}  ${c('&lt;!-- taux en % sur 8 décimales --&gt;')}
       ${T('apt:TaxCoefficient')}${vt('100.00000000')}${TC('apt:TaxCoefficient')}
       ${T('apt:Country')}${vt('CH')}${TC('apt:Country')}
       ${T('apt:TaxCode')}${vt(e.tvaCode)}${TC('apt:TaxCode')}  ${c('&lt;!-- code TVA Abacus --&gt;')}
-    ${TVC('apt:TaxData')}` : ''}
+      ${T('apt:FlatRate')}${vt('0.00000000')}${TC('apt:FlatRate')}
+      ${T('apt:Year')}${vt('0')}${TC('apt:Year')}  ${c('&lt;!-- période TVA : 0=date écriture, sinon année décompte --&gt;')}
+      ${T('apt:Month')}${vt('0')}${TC('apt:Month')}  ${c('&lt;!-- période TVA : 0=date écriture, sinon mois décompte --&gt;')}
+      ${T('apt:FundAccount')}${vt('0')}${TC('apt:FundAccount')}
+      ${T('apt:FundContraAccount')}${vt('0')}${TC('apt:FundContraAccount')}
+      ${T('apt:TaxDate')}${vt(e.date)}${TC('apt:TaxDate')}  ${c('&lt;!-- date de référence TVA --&gt;')}
+    ${TVC('apt:TaxData')}` : '';
+
+  return `${c('&lt;!-- ════ Écriture ' + (idx+1) + '/' + total + ' — ' + (e.desc||'') + ' — ' + e.date + ' ════ --&gt;')}
+${c('&lt;!-- ⚠️  FILTRE Python : ignorer si &lt;apt:Type&gt;Reversal&lt;/apt:Type&gt;              --&gt;')}
+${c('&lt;!--    Type=Reversal = écriture EXTOURNÉE (annulée) → exclure du solde          --&gt;')}
+${c('&lt;!--    Seuls Type=Normal sont à intégrer dans les calculs                       --&gt;')}
+${T('apt:Entry')}
+
+  ${c('&lt;!-- ═══════════════════════════════════════════════════════════════════════ --&gt;')}
+  ${c('&lt;!-- CollectiveInformation : compte PRINCIPAL                               --&gt;')}
+  ${c('&lt;!-- DebitCredit=D → compte débité (charges, achats, banque selon sens)     --&gt;')}
+  ${c('&lt;!-- TaxAccount → sous-compte TVA (1170/1171/2200) ou = Account si sans TVA --&gt;')}
+  ${c('&lt;!-- ═══════════════════════════════════════════════════════════════════════ --&gt;')}
+  ${T('apt:CollectiveInformation')}
+    ${T('apt:EntryType')}${v('S')}${TC('apt:EntryType')}  ${c('&lt;!-- S=écriture simple | K=collective (multi-contreparties) --&gt;')}
+    ${T('apt:Type')}${v('Normal')}${TC('apt:Type')}  ${c('&lt;!-- Normal | Reversal (extournée → à ignorer !) --&gt;')}
+    ${T('apt:DebitCredit')}${D_}${TC('apt:DebitCredit')}  ${c('&lt;!-- D=débité | C=crédité --&gt;')}
+    ${T('apt:EntryDate')}${v(e.date)}${TC('apt:EntryDate')}  ${c('&lt;!-- date comptable --&gt;')}
+    ${T('apt:ValueDate')}${v(e.date)}${TC('apt:ValueDate')}  ${c('&lt;!-- date valeur --&gt;')}
+    ${T('apt:AmountData')}
+       ${T('apt:Currency')}${v('CHF')}${TC('apt:Currency')}
+       ${T('apt:Amount')}${v(amtRaw)}${TC('apt:Amount')}  ${c('&lt;!-- montant TTC (8 décimales) --&gt;')}
+    ${TC('apt:AmountData')}
+    ${T('apt:KeyAmount')}${v(amtTTC)}${TC('apt:KeyAmount')}  ${c('&lt;!-- montant TTC arrondi --&gt;')}
+    ${T('apt:Account')}${v(e.da.n)}${TC('apt:Account')}  ${c('&lt;!-- ' + e.da.name + ' —— compte débité --&gt;')}
+    ${T('apt:TaxAccount')}${hasTaxCode ? vt(taxAccNum||e.da.n) : v(e.da.n)}${TC('apt:TaxAccount')}  ${c('&lt;!-- sous-compte TVA : 1170/1171/2200, ou = Account si sans TVA --&gt;')}
+    ${T('apt:Text1')}${v(e.desc||'')}${TC('apt:Text1')}  ${c('&lt;!-- description principale (ex: N° facture / fournisseur) --&gt;')}
+    ${T('apt:Text2')}${v(e.desc2||'')}${TC('apt:Text2')}  ${c('&lt;!-- description secondaire (optionnel) --&gt;')}
+  ${TC('apt:CollectiveInformation')}
+
+  ${c('&lt;!-- ═══════════════════════════════════════════════════════════════════════ --&gt;')}
+  ${c('&lt;!-- SingleInformation : compte CONTREPARTIE                               --&gt;')}
+  ${c('&lt;!-- Même DebitCredit=D dans le XML Abacus (pas inversé ici !)             --&gt;')}
+  ${c('&lt;!-- TaxData : TOUJOURS présent si TaxCode, même taux 0% (ex: export 126) --&gt;')}
+  ${c('&lt;!-- Si écriture collective : plusieurs SingleInformation possibles         --&gt;')}
+  ${c('&lt;!-- ═══════════════════════════════════════════════════════════════════════ --&gt;')}
+  ${T('apt:SingleInformation')}
+    ${T('apt:Type')}${v('Normal')}${TC('apt:Type')}
+    ${T('apt:DebitCredit')}${D_}${TC('apt:DebitCredit')}  ${c('&lt;!-- ⚠️ même sens que CollectiveInformation dans Abacus --&gt;')}
+    ${T('apt:EntryDate')}${v(e.date)}${TC('apt:EntryDate')}
+    ${T('apt:ValueDate')}${v(e.date)}${TC('apt:ValueDate')}
+    ${T('apt:AmountData')}
+       ${T('apt:Currency')}${v('CHF')}${TC('apt:Currency')}
+       ${T('apt:Amount')}${v(amtRaw)}${TC('apt:Amount')}
+    ${TC('apt:AmountData')}
+    ${T('apt:KeyAmount')}${v(amtTTC)}${TC('apt:KeyAmount')}
+    ${T('apt:Account')}${v(e.ca.n)}${TC('apt:Account')}  ${c('&lt;!-- ' + e.ca.name + ' —— compte contrepartie --&gt;')}
+    ${T('apt:TaxAccount')}${hasTaxCode ? vt(taxAccNum||'1172') : v('0')}${TC('apt:TaxAccount')}  ${c('&lt;!-- même sous-compte TVA que CollectiveInformation --&gt;')}
     ${T('apt:Text1')}${v(e.desc||'')}${TC('apt:Text1')}
-    ${hasTva ? `${T('apt:TaxAccountNr2')}${vt(taxAccXml)}${TC('apt:TaxAccountNr2')}  ${c('&lt;!-- confirme TaxAccount --&gt;')}` : ''}
+    ${T('apt:Text2')}${v(e.desc2||'')}${TC('apt:Text2')}${taxDataBlock}
+    ${hasTaxCode ? `${T('apt:TaxAccountNr2')}${vt(taxAccNum||'1172')}${TC('apt:TaxAccountNr2')}  ${c('&lt;!-- confirme TaxAccount --&gt;')}` : ''}
   ${TC('apt:SingleInformation')}
 
 ${TC('apt:Entry')}`;
