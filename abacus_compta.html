@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Outil de visualisation comptable Abacus — Journal, Forme en T, XML FibuBooking, TVA suisse">
+<meta name="author" content="Abacus Compta">
+<meta property="og:title" content="Abacus Comptabilité — Outil de visualisation">
+<meta property="og:description" content="Journal comptable interactif, forme en T, XML Abacus SOAP, plan comptable suisse, TVA 2024">
+<meta property="og:type" content="website">
+<title>Abacus Comptabilité — Outil</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root {
+  --bg: #f7f6f3;
+  --surface: #ffffff;
+  --border: #e2ddd6;
+  --border2: #ccc8bf;
+  --debit: #1a6b3a;
+  --credit: #b03030;
+  --text: #1a1814;
+  --muted: #7a7469;
+  --accent: #2a52a0;
+  --row-alt: #fafaf8;
+  --nav-bg: #1a1814;
+  --code-bg: #0d1117;
+  --tva-green: #166534;
+  --tva-bg: #f0fdf4;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'IBM Plex Sans', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; min-height: 100vh; }
+
+/* ── NAV ── */
+nav {
+  background: var(--nav-bg);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 2px solid #333;
+}
+.nav-brand {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  color: #fff;
+  padding: 16px 20px 16px 0;
+  margin-right: 16px;
+  border-right: 1px solid #333;
+  white-space: nowrap;
+}
+.nav-brand span { color: #888; font-weight: 300; }
+.nav-tab {
+  padding: 16px 18px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #888;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.nav-tab:hover { color: #ccc; }
+.nav-tab.active { color: #fff; border-bottom-color: #fff; }
+
+/* ── PAGES ── */
+.page { display: none; }
+.page.active { display: block; }
+.page-inner {
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+/* ── SHARED ── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 24px;
+}
+.panel-title {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: #f5f3ef;
+}
+.panel-body { padding: 20px; }
+
+label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 5px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+input, select, textarea {
+  width: 100%;
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: #faf9f7;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+input:focus, select:focus { border-color: var(--accent); background: #fff; }
+
+.btn {
+  padding: 9px 16px;
+  border-radius: 3px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: none;
+}
+.btn-primary { background: var(--text); color: #fff; width: 100%; margin-top: 4px; }
+.btn-primary:hover { background: #333; }
+.btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); width: 100%; margin-top: 4px; }
+.btn-ghost:hover { border-color: var(--credit); color: var(--credit); }
+
+/* ── PAGE 1: JOURNAL ── */
+.journal-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+.entry-form { position: sticky; top: 70px; }
+.form-grid { display: flex; flex-direction: column; gap: 13px; }
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.acc-lookup { position: relative; }
+.lookup-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0;
+  background: white; border: 1px solid var(--border2); border-top: none;
+  border-radius: 0 0 3px 3px; z-index: 200;
+  max-height: 200px; overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.lookup-item {
+  padding: 7px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  cursor: pointer; display: flex; gap: 10px; align-items: center;
+}
+.lookup-item:hover { background: #f0f4fb; }
+.li-num { font-weight: 500; color: var(--accent); min-width: 44px; }
+.li-class { font-size: 10px; color: var(--muted); }
+.acc-hint { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 3px; min-height: 14px; }
+
+/* TVA inline */
+.tva-row { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 3px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.tva-select-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+.tva-rate-badge {
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600;
+  color: var(--tva-green); background: #dcfce7; border: 1px solid #86efac;
+  padding: 6px 12px; border-radius: 3px; text-align: center; white-space: nowrap;
+}
+.tva-amount { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--tva-green); }
+
+/* log */
+.log-header, .log-row {
+  display: grid;
+  grid-template-columns: 88px 72px 1fr 96px 96px;
+  gap: 6px; padding: 8px 14px; font-family: 'IBM Plex Mono', monospace;
+}
+.log-header {
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); background: #f5f3ef; border-bottom: 2px solid var(--text);
+}
+.log-row { font-size: 12px; border-bottom: 1px solid var(--border); animation: fadeIn 0.2s ease; }
+.log-row:nth-child(even) { background: var(--row-alt); }
+.dh { color: var(--debit); text-align: right; }
+.ch { color: var(--credit); text-align: right; }
+.dc { color: var(--debit); text-align: right; }
+.cc { color: var(--credit); text-align: right; }
+.dim { color: var(--muted); font-size: 11px; }
+.tva-tag { font-size: 9px; color: var(--tva-green); background: #dcfce7; padding: 1px 5px; border-radius: 2px; margin-left: 4px; }
+
+/* ledger */
+.ledger { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; margin-bottom: 16px; }
+.ledger-header { display: flex; align-items: center; justify-content: space-between; padding: 11px 15px; border-bottom: 2px solid var(--text); background: #f5f3ef; }
+.ledger-meta { display: flex; align-items: center; gap: 10px; }
+.acc-number { font-family: 'IBM Plex Mono', monospace; font-size: 1rem; font-weight: 600; }
+.acc-name { font-size: 12px; color: var(--muted); }
+.acc-class { font-family: 'IBM Plex Mono', monospace; font-size: 10px; padding: 2px 7px; border-radius: 2px; text-transform: uppercase; }
+.cl-A { background: #e8f0fa; color: var(--accent); }
+.cl-B { background: #faeaea; color: var(--credit); }
+.cl-C { background: #fff3e8; color: #c05000; }
+.cl-D { background: #e8f5ee; color: var(--debit); }
+.cl-E { background: #f3f3f3; color: #777; }
+.solde-box { text-align: right; }
+.solde-lbl { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; }
+.solde-val { font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; font-weight: 600; }
+.sp { color: var(--debit); } .sn { color: var(--credit); } .sz { color: var(--muted); }
+
+.led-table { width: 100%; border-collapse: collapse; }
+.led-table th {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted); padding: 6px 13px;
+  border-bottom: 1px solid var(--border); text-align: left; background: #faf9f7;
+}
+.led-table th.r { text-align: right; }
+.led-table td { padding: 7px 13px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; border-bottom: 1px solid var(--border); }
+.led-table tr:last-child td { border-bottom: none; }
+.led-table tr:nth-child(even) td { background: var(--row-alt); }
+.td-r { text-align: right; } .td-d { color: var(--debit); text-align: right; } .td-c { color: var(--credit); text-align: right; }
+
+.led-foot {
+  display: grid; grid-template-columns: 1fr 100px 100px 110px;
+  padding: 9px 13px; background: #f5f3ef; border-top: 2px solid var(--text);
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; gap: 6px;
+}
+.lft-d { color: var(--debit); text-align: right; }
+.lft-c { color: var(--credit); text-align: right; }
+.lft-s { text-align: right; }
+
+.summary-bar {
+  display: flex; gap: 24px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 4px; padding: 13px 18px; margin-bottom: 18px; flex-wrap: wrap;
+}
+.sum-item { display: flex; flex-direction: column; gap: 2px; }
+.s-lbl { font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.s-val { font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; font-weight: 500; }
+
+/* ── PAGE 2: XML ── */
+.xml-page .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+.xml-block {
+  background: var(--code-bg); border: 1px solid #1e2740; border-radius: 4px;
+  padding: 20px; font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  line-height: 1.85; overflow-x: auto;
+}
+.xt { color: #7dd3fc; } .xa { color: #fbbf24; } .xv { color: #86efac; }
+.xc { color: #4b5563; font-style: italic; } .xh { background: rgba(79,156,249,0.18); border-radius: 3px; padding: 0 3px; }
+.xd { color: #4ade80; font-weight: 600; } .xcr { color: #f87171; font-weight: 600; }
+.pipeline-block {
+  background: var(--code-bg); border: 1px solid #1e2740; border-radius: 4px;
+  padding: 20px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 2.1;
+}
+.ps { color: #7dd3fc; } .pa { color: #fbbf24; } .pc { color: #86efac; } .pm { color: #c084fc; }
+
+.mapping-table { width: 100%; border-collapse: collapse; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+.mapping-table th { padding: 7px 12px; background: #f5f3ef; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); text-align: left; border-bottom: 2px solid var(--text); }
+.mapping-table td { padding: 7px 12px; border-bottom: 1px solid var(--border); }
+.mapping-table tr:nth-child(even) td { background: var(--row-alt); }
+.area-A { color: var(--accent); } .area-B { color: var(--credit); }
+.area-C { color: #c05000; } .area-D { color: var(--debit); }
+
+.insight {
+  background: #f0f7ff; border-left: 3px solid var(--accent); padding: 14px 16px;
+  font-size: 13px; color: #1e3a6e; border-radius: 0 4px 4px 0; margin: 14px 0;
+}
+.warn {
+  background: #fff7ed; border-left: 3px solid #ea580c; padding: 14px 16px;
+  font-size: 13px; color: #7c2d12; border-radius: 0 4px 4px 0; margin: 14px 0;
+}
+
+/* chart */
+.chart-wrap { position: relative; height: 280px; }
+
+/* ── PAGE 3: TVA ── */
+.tva-page .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+.tva-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
+  padding: 14px 16px; cursor: pointer; transition: all 0.15s;
+}
+.tva-card:hover { border-color: var(--accent); }
+.tva-card.selected { border-color: var(--tva-green); background: #f0fdf4; }
+.tva-code { font-family: 'IBM Plex Mono', monospace; font-size: 1.3rem; font-weight: 600; color: var(--accent); }
+.tva-rate-big { font-family: 'IBM Plex Mono', monospace; font-size: 1rem; font-weight: 500; }
+.tva-desc { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+
+.rate-77 { color: #1d4ed8; } .rate-81 { color: #166534; } .rate-26 { color: #7c3aed; }
+.rate-25 { color: #0369a1; } .rate-38 { color: #b45309; } .rate-0 { color: var(--muted); }
+.rate-100 { color: #9f1239; }
+
+.tva-section-head {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted); padding: 14px 0 8px;
+  border-top: 1px solid var(--border); margin-top: 16px;
+}
+
+.tva-demo-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.tva-calc-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; padding: 18px; }
+.tva-calc-row { display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 6px 0; border-bottom: 1px solid #dcfce7; }
+.tva-calc-row:last-child { border-bottom: none; font-weight: 600; font-size: 13px; }
+.tva-calc-row .lbl { color: var(--muted); }
+.tva-calc-row .val { font-weight: 500; }
+
+/* Animations */
+@keyframes fadeIn { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:translateY(0); } }
+
+.empty-state {
+  padding: 28px; text-align: center; color: var(--muted);
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+}
+
+/* ── T-ACCOUNT + XML PREVIEW ── */
+.preview-zone {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+.preview-zone-title {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: #f5f3ef;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.preview-zone-title .dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--border2);
+}
+.preview-zone-title .dot.active { background: var(--debit); }
+
+.preview-body {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 0;
+}
+.t-side {
+  padding: 20px 16px;
+  border-right: 1px solid var(--border);
+}
+.xml-side {
+  padding: 0;
+}
+
+/* T-FORM */
+.t-accounts-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.t-account-block { }
+.t-acc-name {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.t-acc-badge {
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.t-grid {
+  display: grid;
+  grid-template-columns: 1fr 3px 1fr;
+  border: 1.5px solid var(--border2);
+  border-radius: 3px;
+  overflow: hidden;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+}
+.t-col-head {
+  padding: 5px 10px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+  border-bottom: 1.5px solid var(--border2);
+}
+.t-col-head.dh { color: var(--debit); background: #f0fdf4; }
+.t-col-head.ch { color: var(--credit); background: #fff5f5; }
+.t-divider-v { background: var(--border2); }
+.t-col-body { padding: 8px 10px; min-height: 54px; }
+.t-entry-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  font-size: 11px;
+}
+.t-entry-row .te-amt { font-weight: 600; }
+.t-entry-row.d-row .te-amt { color: var(--debit); }
+.t-entry-row.c-row .te-amt { color: var(--credit); }
+.t-foot {
+  display: grid;
+  grid-template-columns: 1fr 3px 1fr;
+  border-top: 1.5px solid var(--border2);
+  background: #f5f3ef;
+}
+.t-foot-cell { padding: 5px 10px; font-size: 11px; font-weight: 600; text-align: right; }
+.t-foot-cell.d { color: var(--debit); }
+.t-foot-cell.c { color: var(--credit); }
+.t-solde-bar {
+  margin-top: 5px;
+  padding: 5px 10px;
+  border-radius: 3px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: right;
+}
+.t-solde-bar.deb { background: #f0fdf4; color: var(--debit); border: 1px solid #bbf7d0; }
+.t-solde-bar.cred { background: #fff5f5; color: var(--credit); border: 1px solid #fecaca; }
+
+.tva-t-separator {
+  border: none;
+  border-top: 1.5px dashed var(--border2);
+  margin: 12px 0;
+}
+
+/* XML side */
+.xml-preview-block {
+  background: var(--code-bg);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11.5px;
+  line-height: 2;
+  padding: 20px 24px;
+  height: 100%;
+  max-height: 680px;
+  min-height: 200px;
+  overflow-x: auto;
+  overflow-y: auto;
+  color: #94a3b8;
+  white-space: pre;
+  tab-size: 2;
+  scroll-behavior: smooth;
+}
+.xml-preview-block .xt { color: #7dd3fc; }
+.xml-preview-block .xv { color: #86efac; }
+.xml-preview-block .xc { color: #4b5563; font-style: italic; }
+.xml-preview-block .xd { color: #4ade80; font-weight: 600; }
+.xml-preview-block .xcr { color: #f87171; font-weight: 600; }
+.xml-preview-block .xtva { color: #f59e0b; }
+.xml-preview-block .xh { background: rgba(79,156,249,0.18); border-radius: 2px; padding: 0 3px; }
+.xml-empty {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; min-height: 160px;
+  color: #374151; font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px; text-align: center; line-height: 1.8;
+}
+
+@media (max-width: 900px) {
+  .journal-layout { grid-template-columns: 1fr; }
+  .xml-page .two-col { grid-template-columns: 1fr; }
+  .tva-page .grid-3 { grid-template-columns: 1fr 1fr; }
+  .tva-demo-panel { grid-template-columns: 1fr; }
+  .entry-form { position: static; }
+  .preview-body { grid-template-columns: 1fr; }
+  .t-side { border-right: none; border-bottom: 1px solid var(--border); }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">Abacus <span>/ Compta</span></div>
+  <div class="nav-tab active" onclick="showPage('p-journal',this)">Journal</div>
+  <div class="nav-tab" onclick="showPage('p-xml',this)">XML & Mapping</div>
+  <div class="nav-tab" onclick="showPage('p-tva',this)">TVA</div>
+</nav>
+
+<!-- ════════════════════════════════════════
+     PAGE 1 — JOURNAL
+════════════════════════════════════════ -->
+<div id="p-journal" class="page active">
+<div class="page-inner">
+<div class="journal-layout">
+
+  <!-- FORM -->
+  <div class="entry-form">
+    <div class="panel">
+      <div class="panel-title">Nouvelle écriture</div>
+      <div class="panel-body">
+        <div class="form-grid">
+
+          <div>
+            <label>Date</label>
+            <input type="date" id="j-date">
+          </div>
+
+          <div>
+            <label>Description</label>
+            <input type="text" id="j-desc" placeholder="ex: Versement client Dupont SA">
+          </div>
+
+          <div>
+            <label>Montant HT (CHF)</label>
+            <input type="number" id="j-amount" placeholder="0.00" step="0.01" min="0" oninput="calcTva()">
+          </div>
+
+          <div>
+            <label>Compte DÉBIT <span style="color:var(--debit)">↑</span></label>
+            <div class="acc-lookup">
+              <input type="text" id="j-debit" placeholder="Nº ou nom du compte" autocomplete="off"
+                oninput="showLookup('debit')" onfocus="showLookup('debit')" onblur="hideLookup('debit',200)">
+              <div id="ld-debit" class="lookup-dropdown" style="display:none"></div>
+            </div>
+            <div class="acc-hint" id="hint-debit"></div>
+          </div>
+
+          <div>
+            <label>Compte CRÉDIT <span style="color:var(--credit)">↓</span></label>
+            <div class="acc-lookup">
+              <input type="text" id="j-credit" placeholder="Nº ou nom du compte" autocomplete="off"
+                oninput="showLookup('credit')" onfocus="showLookup('credit')" onblur="hideLookup('credit',200)">
+              <div id="ld-credit" class="lookup-dropdown" style="display:none"></div>
+            </div>
+            <div class="acc-hint" id="hint-credit"></div>
+          </div>
+
+          <!-- TVA -->
+          <div class="tva-row">
+            <label style="color:var(--tva-green);margin-bottom:8px">TVA (optionnel)</label>
+            <div class="tva-select-row">
+              <div>
+                <label>Code TVA</label>
+                <select id="j-tva" onchange="calcTva()">
+                  <option value="">— Sans TVA —</option>
+                </select>
+              </div>
+              <div class="tva-rate-badge" id="tva-rate-badge">—</div>
+            </div>
+            <div class="tva-amount" id="tva-amount-line"></div>
+          </div>
+
+          <button class="btn btn-primary" onclick="addEntry()">+ Enregistrer l'écriture</button>
+          <button class="btn btn-ghost" onclick="clearAll()">Effacer tout</button>
+          <div style="text-align:center;margin-top:4px">
+            <a href="#" onclick="loadDemo();return false"
+              style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent);text-decoration:none;letter-spacing:0.05em">
+              Charger données démo
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div>
+    <!-- Journal log -->
+    <div class="panel" style="overflow:hidden">
+      <div class="panel-title">Journal des écritures</div>
+      <div class="log-header">
+        <span>Date</span><span>Compte</span><span>Description</span>
+        <span class="dh">Débit</span><span class="ch">Crédit</span>
+      </div>
+      <div id="journal-body">
+        <div class="empty-state">Aucune écriture enregistrée</div>
+      </div>
+    </div>
+
+    <!-- T-ACCOUNT + XML PREVIEW -->
+    <div class="preview-zone">
+      <div class="preview-zone-title">
+        <span class="dot" id="t-dot"></span>
+        Forme en T — Dernière écriture saisie &amp; XML Abacus
+      </div>
+      <div class="preview-body">
+        <div class="t-side" id="t-side-content">
+          <div style="display:flex;align-items:center;justify-content:center;height:100%;min-height:160px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;text-align:center;line-height:1.8">
+            Saisir une écriture<br>pour voir la forme en T
+          </div>
+        </div>
+        <div class="xml-side">
+          <div class="xml-preview-block" id="xml-preview-content">
+            <div class="xml-empty">
+              &lt;!-- XML Abacus --&gt;<br>Apparaît ici après saisie
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary-bar" id="summary-bar" style="display:none">
+      <div class="sum-item"><span class="s-lbl">Écritures</span><span class="s-val" id="s-count">0</span></div>
+      <div class="sum-item"><span class="s-lbl">Σ Débits</span><span class="s-val" style="color:var(--debit)" id="s-deb">0.00</span></div>
+      <div class="sum-item"><span class="s-lbl">Σ Crédits</span><span class="s-val" style="color:var(--credit)" id="s-cred">0.00</span></div>
+      <div class="sum-item"><span class="s-lbl">Équilibre</span><span class="s-val" id="s-bal">—</span></div>
+    </div>
+
+    <!-- Ledgers -->
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">
+      Grand-livre par compte — Solde = Σ Débit − Σ Crédit
+    </div>
+    <div id="ledgers-section">
+      <div class="empty-state" style="background:white;border:1px solid var(--border);border-radius:4px;padding:32px">
+        Les tableaux apparaissent ici après saisie
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     PAGE 2 — XML & MAPPING
+════════════════════════════════════════ -->
+<div id="p-xml" class="page xml-page">
+<div class="page-inner">
+
+  <div style="margin-bottom:28px">
+    <h2 style="font-family:'IBM Plex Mono',monospace;font-size:1.3rem;font-weight:500;color:var(--text);margin-bottom:6px">
+      Structure XML Abacus — Exploitation comptable
+    </h2>
+    <p style="color:var(--muted);font-size:13px">Comment lire un export SOAP Abacus et calculer les soldes correctement.</p>
+  </div>
+
+  <!-- Section 1: XML structure -->
+  <div class="panel">
+    <div class="panel-title">1 — Exemple de réponse SOAP / XML</div>
+    <div class="panel-body two-col">
+      <div>
+        <div class="xml-block">
+<span class="xc">&lt;!-- Enveloppe SOAP --&gt;</span>
+&lt;<span class="xt">soapenv:Envelope</span>&gt;
+ &lt;<span class="xt">soapenv:Body</span>&gt;
+  &lt;<span class="xt">IsFinishedResponse</span>&gt;
+   &lt;<span class="xt">DataContainer</span>&gt;
+    &lt;<span class="xt">Data</span>&gt;
+
+     &lt;<span class="xt">apt:Entry</span>&gt;
+
+      <span class="xc">&lt;!-- Ligne 1 : compte chargé --&gt;</span>
+      &lt;<span class="xt">CollectiveInformation</span>&gt;
+        &lt;<span class="xt">Account</span>&gt;<span class="xv">6510</span>&lt;/<span class="xt">Account</span>&gt;
+        &lt;<span class="xt">DebitCredit</span>&gt;<span class="xh xd">D</span>&lt;/<span class="xt">DebitCredit</span>&gt;
+        &lt;<span class="xt">Amount</span>&gt;<span class="xv">426.00</span>&lt;/<span class="xt">Amount</span>&gt;
+        &lt;<span class="xt">Date</span>&gt;<span class="xv">2025-03-15</span>&lt;/<span class="xt">Date</span>&gt;
+        &lt;<span class="xt">ClassificationArea</span>&gt;<span class="xv">C</span>&lt;/<span class="xt">ClassificationArea</span>&gt;
+        &lt;<span class="xt">TaxCode</span>&gt;<span class="xv">511</span>&lt;/<span class="xt">TaxCode</span>&gt;
+      &lt;/<span class="xt">CollectiveInformation</span>&gt;
+
+      <span class="xc">&lt;!-- Ligne 2 : contrepartie fournisseur --&gt;</span>
+      &lt;<span class="xt">SingleInformation</span>&gt;
+        &lt;<span class="xt">Account</span>&gt;<span class="xv">2000</span>&lt;/<span class="xt">Account</span>&gt;
+        &lt;<span class="xt">DebitCredit</span>&gt;<span class="xh xcr">C</span>&lt;/<span class="xt">DebitCredit</span>&gt;
+        &lt;<span class="xt">Amount</span>&gt;<span class="xv">426.00</span>&lt;/<span class="xt">Amount</span>&gt;
+        &lt;<span class="xt">ClassificationArea</span>&gt;<span class="xv">B</span>&lt;/<span class="xt">ClassificationArea</span>&gt;
+      &lt;/<span class="xt">SingleInformation</span>&gt;
+
+     &lt;/<span class="xt">apt:Entry</span>&gt;
+
+    &lt;/<span class="xt">Data</span>&gt;
+   &lt;/<span class="xt">DataContainer</span>&gt;
+  &lt;/<span class="xt">IsFinishedResponse</span>&gt;
+ &lt;/<span class="xt">soapenv:Body</span>&gt;
+&lt;/<span class="xt">soapenv:Envelope</span>&gt;
+        </div>
+        <div class="insight" style="margin-top:12px">
+          <strong>Partie double :</strong> chaque Entry contient au moins 2 lignes.
+          La somme des montants D = somme des montants C.
+          Compte <strong>6510</strong> (Charges) est débité → solde positif = dépense réelle.
+          Compte <strong>2000</strong> (Fournisseurs) est crédité → dette augmente.
+        </div>
+      </div>
+      <div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.7">
+          Les champs clés à extraire de chaque ligne XML :
+        </p>
+        <table class="mapping-table">
+          <thead><tr><th>Champ XML</th><th>Valeurs</th><th>Usage</th></tr></thead>
+          <tbody>
+            <tr><td><code>Account</code></td><td>4 chiffres</td><td>N° de compte</td></tr>
+            <tr><td><code>DebitCredit</code></td><td><span style="color:var(--debit)">D</span> / <span style="color:var(--credit)">C</span></td><td>Sens du mouvement</td></tr>
+            <tr><td><code>Amount</code></td><td>Décimal</td><td>Montant brut</td></tr>
+            <tr><td><code>Date</code></td><td>YYYY-MM-DD</td><td>Date écriture</td></tr>
+            <tr><td><code>ClassificationArea</code></td><td>A/B/C/D/E</td><td>Type de compte</td></tr>
+            <tr><td><code>TaxCode</code></td><td>ex: 511, 131</td><td>Code TVA</td></tr>
+            <tr style="background:#fff7ed"><td><code style="color:#c05000">Type</code></td><td><span style="color:#c05000">Normal</span> / <span style="color:var(--credit);font-weight:600">Reversal</span></td><td><strong style="color:var(--credit)">⚠️ Reversal = extournée → ignorer !</strong></td></tr>
+          </tbody>
+        </table>
+        <div class="warn" style="margin-top:14px">
+          <strong>⚠️ Erreur classique :</strong><br>
+          <code style="background:#fee2e2;padding:2px 5px;border-radius:2px">solde = SUM(Amount)</code> — Faux ! Additionne D + C pêle-mêle.<br><br>
+          <strong>✅ Correct :</strong><br>
+          <code style="background:#dcfce7;padding:2px 5px;border-radius:2px">solde = SUM(Amount where D=D) − SUM(Amount where D=C)</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 2: Transformation -->
+  <div class="panel">
+    <div class="panel-title">2 — Pipeline XML → Solde (Python)</div>
+    <div class="panel-body two-col">
+      <div>
+        <div class="pipeline-block">
+<span class="xc"># ── ÉTAPE 0 : FILTRER LES EXTOURNES ────────────────────────</span>
+<span class="xc"># &lt;apt:Type&gt;Reversal&lt;/apt:Type&gt; = écriture EXTOURNÉE (annulée)</span>
+<span class="xc"># Ces écritures DOIVENT être exclues des calculs de solde !</span>
+<span class="xc"># Seul Type="Normal" compte dans les agrégations.</span>
+<span class="pa">if</span> entry.get(<span class="pc">"Type"</span>) == <span class="pc">"Reversal"</span>:
+  <span class="pa">continue</span>  <span class="xc"># ← ignorer complètement cette écriture</span>
+
+<span class="xc"># 1. Parser chaque ligne XML</span>
+<span class="pa">for</span> line <span class="pa">in</span> entry.lines:
+  account = line[<span class="pc">"Account"</span>]
+  dc      = line[<span class="pc">"DebitCredit"</span>]
+  amount  = Decimal(line[<span class="pc">"Amount"</span>])
+  area    = line[<span class="pc">"ClassificationArea"</span>]
+
+  <span class="xc"># 2. Séparer débit / crédit</span>
+  <span class="pa">if</span> dc == <span class="pc">"D"</span>:
+    debit, credit = amount, Decimal(<span class="pc">0</span>)
+  <span class="pa">else</span>:
+    debit, credit = Decimal(<span class="pc">0</span>), amount
+
+  <span class="xc"># 3. Accumuler par compte</span>
+  totals[account][<span class="pc">"debit"</span>]  += debit
+  totals[account][<span class="pc">"credit"</span>] += credit
+
+<span class="xc"># 4. Calculer le solde</span>
+<span class="pa">for</span> acc, v <span class="pa">in</span> totals.items():
+  v[<span class="pc">"solde"</span>] = v[<span class="pc">"debit"</span>] - v[<span class="pc">"credit"</span>]
+
+<span class="xc"># 5. ClassificationArea → sens attendu</span>
+<span class="xc"># A, C → solde débiteur (positif = normal)</span>
+<span class="xc"># B, D → solde créditeur (négatif = normal)</span>
+        </div>
+      </div>
+      <div>
+        <table class="mapping-table" style="margin-bottom:14px">
+          <thead><tr><th>ClassificationArea</th><th>Type</th><th>Solde normal</th><th>Exemple</th></tr></thead>
+          <tbody>
+            <tr><td class="area-A"><strong>A</strong></td><td>Actif</td><td style="color:var(--debit)">Débiteur (+)</td><td>1020 Banque</td></tr>
+            <tr><td class="area-B"><strong>B</strong></td><td>Passif</td><td style="color:var(--credit)">Créditeur (−)</td><td>2000 Fournisseurs</td></tr>
+            <tr><td class="area-C"><strong>C</strong></td><td>Charges</td><td style="color:var(--debit)">Débiteur (+)</td><td>6510 Frais IT</td></tr>
+            <tr><td class="area-D"><strong>D</strong></td><td>Produits</td><td style="color:var(--credit)">Créditeur (−)</td><td>3400 Services</td></tr>
+            <tr><td><strong style="color:#777">E</strong></td><td>Clôture</td><td style="color:var(--muted)">—</td><td>9000</td></tr>
+          </tbody>
+        </table>
+        <div class="insight">
+          <strong>Mapping 2 chiffres :</strong> les deux premiers chiffres du numéro de compte
+          déterminent la catégorie. Ex: <strong>6510</strong> → préfixe <strong>65</strong> → "Frais administratifs et IT".
+          Utilisé pour regrouper les charges dans le graphique camembert.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 3: Graphiques -->
+  <div class="panel">
+    <div class="panel-title">3 — Visualisations issues du XML (exemples)</div>
+    <div class="panel-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;align-items:start">
+
+        <div>
+          <p style="font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:10px">
+            Soldes périodiques comptes 10XX
+          </p>
+          <div class="chart-wrap"><canvas id="chart-liquidites"></canvas></div>
+          <p style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5">
+            <code style="background:#f5f3ef;padding:1px 4px">Σ Débit − Σ Crédit</code> sur les comptes 10XX (Liquidités), 
+            groupé par trimestre. Correspond au graphique "CA encaissé".
+          </p>
+        </div>
+
+        <div>
+          <p style="font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:10px">
+            Dépenses vs Encaissements (10XX)
+          </p>
+          <div class="chart-wrap"><canvas id="chart-depenses"></canvas></div>
+          <p style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5">
+            Débit = entrées sur compte bancaire, Crédit = sorties.
+            Graphique bicolore (vert/rouge) comme dans ton Power BI.
+          </p>
+        </div>
+
+        <div>
+          <p style="font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:10px">
+            Charges par catégorie (préfixe 2 chiffres)
+          </p>
+          <div class="chart-wrap"><canvas id="chart-charges"></canvas></div>
+          <p style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5">
+            <code style="background:#f5f3ef;padding:1px 4px">Σ Débit − Σ Crédit</code> des comptes ClassificationArea=C,
+            regroupés par préfixe 2 chiffres. Correspond à ton camembert.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     PAGE 3 — TVA
+════════════════════════════════════════ -->
+<div id="p-tva" class="page tva-page">
+<div class="page-inner">
+
+  <div style="margin-bottom:28px">
+    <h2 style="font-family:'IBM Plex Mono',monospace;font-size:1.3rem;font-weight:500;color:var(--text);margin-bottom:6px">
+      TVA — Taxe sur la Valeur Ajoutée (Suisse)
+    </h2>
+    <p style="color:var(--text);font-size:13px;line-height:1.7;max-width:760px">
+      La TVA est un impôt indirect collecté par les entreprises au nom de l'État. 
+      L'entreprise facture la TVA à ses clients (<strong>TVA collectée / output tax</strong>) 
+      et récupère la TVA payée à ses fournisseurs (<strong>TVA déductible / input tax</strong>).
+      Elle verse à l'AFC uniquement la <strong>différence</strong>.
+      <br><br>
+      En Abacus, chaque écriture porte un <strong>code TVA</strong> qui identifie le taux applicable 
+      et le sens (collectée ou déductible). Ces codes permettent de générer automatiquement 
+      le décompte TVA.
+    </p>
+  </div>
+
+  <!-- Taux en vigueur -->
+  <div class="panel">
+    <div class="panel-title">Taux suisses en vigueur (2024+)</div>
+    <div class="panel-body">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:8px">
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:14px;text-align:center">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:1.4rem;font-weight:700;color:#1d4ed8">8.1%</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Taux normal<br>(depuis jan. 2024)</div>
+        </div>
+        <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:4px;padding:14px;text-align:center">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:1.4rem;font-weight:700;color:#7c3aed">2.6%</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Taux réduit<br>(alimentation, médicaments)</div>
+        </div>
+        <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:4px;padding:14px;text-align:center">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:1.4rem;font-weight:700;color:#b45309">3.8%</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Taux hébergement<br>(hôtellerie)</div>
+        </div>
+        <div style="background:#f9fafb;border:1px solid var(--border);border-radius:4px;padding:14px;text-align:center">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:1.4rem;font-weight:700;color:var(--muted)">0%</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Exonéré / hors champ<br>(exports, assurances…)</div>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--muted)">Taux avant jan. 2024 : 7.7% (normal), 2.5% (réduit), 3.7% (hébergement)</p>
+    </div>
+  </div>
+
+  <!-- Codes TVA -->
+  <div class="panel">
+    <div class="panel-title">Codes TVA Abacus → Taux</div>
+    <div class="panel-body">
+
+      <div class="tva-section-head" style="border-top:none;margin-top:0;padding-top:0">TVA collectée (ventes) — codes 1xx, 3xx</div>
+      <div class="grid-3" id="tva-grid-sales"></div>
+
+      <div class="tva-section-head">TVA déductible (achats) — codes 4xx, 5xx</div>
+      <div class="grid-3" id="tva-grid-purchases"></div>
+
+      <div class="tva-section-head">Exonéré / cas spéciaux — codes 1xx (0%), 2xx, 4xx</div>
+      <div class="grid-3" id="tva-grid-zero"></div>
+
+    </div>
+  </div>
+
+  <!-- Calculatrice TVA -->
+  <div class="panel">
+    <div class="panel-title">Calculatrice TVA — simulation d'écriture</div>
+    <div class="panel-body tva-demo-panel">
+      <div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div>
+            <label>Montant HT</label>
+            <input type="number" id="tva-ht" placeholder="1000.00" step="0.01" oninput="calcTvaPage()">
+          </div>
+          <div>
+            <label>Code TVA</label>
+            <select id="tva-code-sel" onchange="calcTvaPage()">
+              <option value="">— Sélectionner —</option>
+            </select>
+          </div>
+          <div id="tva-page-result" style="display:none">
+            <div class="xml-block" style="margin-top:8px;font-size:11px;line-height:2">
+<span class="xc" id="tva-xml-preview">&lt;!-- Écriture générée --&gt;</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="tva-calc-box" id="tva-calc-box" style="display:none">
+          <div class="tva-calc-row"><span class="lbl">Montant HT</span><span class="val" id="tc-ht">—</span></div>
+          <div class="tva-calc-row"><span class="lbl">Code TVA</span><span class="val" id="tc-code">—</span></div>
+          <div class="tva-calc-row"><span class="lbl">Taux</span><span class="val" id="tc-rate">—</span></div>
+          <div class="tva-calc-row"><span class="lbl">Montant TVA</span><span class="val" id="tc-tva">—</span></div>
+          <div class="tva-calc-row"><span class="lbl">Montant TTC</span><span class="val" id="tc-ttc">—</span></div>
+          <div class="tva-calc-row" style="margin-top:8px;padding-top:8px;border-top:1px solid #86efac">
+            <span class="lbl">Compte TVA</span><span class="val" id="tc-acc">—</span>
+          </div>
+        </div>
+        <div id="tva-calc-empty" style="padding:28px;text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:12px">
+          Entrez un montant et un code TVA
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════ -->
+<script>
+// ── NAV ──
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── ACCOUNTS ──
+const ACCOUNTS = [
+  {n:"1000",name:"Caisse",area:"A"},{n:"1010",name:"PostFinance",area:"A"},
+  {n:"1020",name:"Banque UBS",area:"A"},{n:"1021",name:"Banque Raiffeisen",area:"A"},
+  {n:"1060",name:"Placements CT",area:"A"},{n:"1100",name:"Créances clients",area:"A"},
+  {n:"1170",name:"TVA déductible",area:"A"},{n:"1200",name:"Stocks",area:"A"},
+  {n:"1300",name:"Charges prépayées",area:"A"},{n:"1500",name:"Machines",area:"A"},
+  {n:"1600",name:"Immeubles",area:"A"},{n:"1700",name:"Brevets",area:"A"},
+  {n:"2000",name:"Fournisseurs",area:"B"},{n:"2100",name:"Dettes bancaires CT",area:"B"},
+  {n:"2270",name:"TVA due",area:"B"},{n:"2300",name:"Provisions",area:"B"},
+  {n:"2400",name:"Hypothèques",area:"B"},{n:"2800",name:"Capital social",area:"B"},
+  {n:"2900",name:"Réserves",area:"B"},{n:"2970",name:"Bénéfice reporté",area:"B"},
+  {n:"3000",name:"Ventes produits",area:"D"},{n:"3200",name:"Ventes marchandises",area:"D"},
+  {n:"3400",name:"Prestations services",area:"D"},{n:"3600",name:"Produits accessoires",area:"D"},
+  {n:"4000",name:"Achats matières",area:"C"},{n:"4200",name:"Achats marchandises",area:"C"},
+  {n:"4400",name:"Achats prestations",area:"C"},{n:"4900",name:"Escomptes achats",area:"C"},
+  {n:"5200",name:"Salaires bruts",area:"C"},{n:"5700",name:"Charges sociales",area:"C"},
+  {n:"5800",name:"Frais personnel",area:"C"},{n:"6000",name:"Loyers",area:"C"},
+  {n:"6100",name:"Entretien",area:"C"},{n:"6200",name:"Véhicules",area:"C"},
+  {n:"6300",name:"Assurances & taxes",area:"C"},{n:"6400",name:"Énergie",area:"C"},
+  {n:"6500",name:"Frais admin & IT",area:"C"},{n:"6600",name:"Marketing",area:"C"},
+  {n:"6700",name:"Autres charges",area:"C"},{n:"7000",name:"Produits financiers",area:"D"},
+  {n:"7500",name:"Revenus immeubles",area:"D"},{n:"8000",name:"Charges hors expl.",area:"C"},
+  {n:"8100",name:"Produits hors expl.",area:"D"},{n:"8500",name:"Amortissements except.",area:"C"},
+  {n:"8600",name:"Charges uniques",area:"C"},{n:"8700",name:"Produits hors période",area:"D"},
+  {n:"9000",name:"Clôture",area:"E"},
+];
+const CLASS_NAMES = {A:"Actif",B:"Passif",C:"Charges",D:"Produits",E:"Clôture"};
+
+// ── TVA DATA ──
+const TVA_MAPPING = {
+  111:{rate:7.7,desc:"Vente normale 7.7% (avant 2024)",dir:"sales"},
+  131:{rate:8.1,desc:"Vente normale 8.1% (depuis 2024)",dir:"sales"},
+  132:{rate:2.6,desc:"Vente taux réduit 2.6%",dir:"sales"},
+  141:{rate:8.1,desc:"Contre-prestation en espèces 8.1%",dir:"sales"},
+  142:{rate:2.6,desc:"Contre-prestation en espèces réduit",dir:"sales"},
+  144:{rate:3.8,desc:"Hébergement 3.8%",dir:"sales"},
+  311:{rate:7.7,desc:"Acquisition étrangère 7.7%",dir:"sales"},
+  312:{rate:2.5,desc:"Acquisition étrangère réduit",dir:"sales"},
+  121:{rate:7.7,desc:"Prestation propre 7.7%",dir:"sales"},
+  511:{rate:8.1,desc:"Déduction préalable 8.1%",dir:"purchases"},
+  512:{rate:2.6,desc:"Déduction préalable réduit 2.6%",dir:"purchases"},
+  516:{rate:100,desc:"Déduction préalable 100% (spécial)",dir:"purchases"},
+  112:{rate:2.5,desc:"Vente taux réduit 2.5% (avant 2024)",dir:"sales"},
+  122:{rate:2.5,desc:"Prestation propre réduit 2.5%",dir:"sales"},
+  126:{rate:0,desc:"Export 0% exonéré",dir:"zero"},
+  136:{rate:0,desc:"Livraison 0% exonéré",dir:"zero"},
+  116:{rate:0,desc:"0% — hors champ TVA",dir:"zero"},
+  200:{rate:0,desc:"Pas de TVA (opérations internes)",dir:"zero"},
+  400:{rate:0,desc:"Pas de TVA (achats exonérés)",dir:"zero"},
+  401:{rate:0,desc:"Pas de TVA (imports exonérés)",dir:"zero"},
+  115:{rate:100,desc:"TVA incluse — décompte spécial",dir:"sales"},
+  125:{rate:100,desc:"Décompte méthode taux dette",dir:"sales"},
+};
+
+const TVA_ACCOUNT = {sales:"2200",purchases:"1170"};
+
+function rateClass(r) {
+  if(r===8.1||r===7.7) return 'rate-81';
+  if(r===2.6||r===2.5) return 'rate-26';
+  if(r===3.8||r===3.7) return 'rate-38';
+  if(r===0) return 'rate-0';
+  return 'rate-100';
+}
+
+// Populate TVA cards
+function buildTvaCards() {
+  const grids = {sales:'tva-grid-sales',purchases:'tva-grid-purchases',zero:'tva-grid-zero'};
+  Object.entries(grids).forEach(([dir, gid]) => {
+    const grid = document.getElementById(gid);
+    Object.entries(TVA_MAPPING).filter(([,v])=>v.dir===dir).forEach(([code,v]) => {
+      const card = document.createElement('div');
+      card.className = 'tva-card';
+      card.innerHTML = `
+        <div class="tva-code">${code}</div>
+        <div class="tva-rate-big ${rateClass(v.rate)}">${v.rate === 100 ? 'Spécial' : v.rate+'%'}</div>
+        <div class="tva-desc">${v.desc}</div>
+      `;
+      grid.appendChild(card);
+    });
+  });
+
+  // Populate selects
+  const sel1 = document.getElementById('j-tva');
+  const sel2 = document.getElementById('tva-code-sel');
+  Object.entries(TVA_MAPPING).forEach(([code, v]) => {
+    const label = `${code} — ${v.rate===100?'Spécial':v.rate+'%'} — ${v.desc.slice(0,30)}`;
+    sel1.innerHTML += `<option value="${code}">${label}</option>`;
+    sel2.innerHTML += `<option value="${code}">${label}</option>`;
+  });
+}
+
+// ── LOOKUP ──
+function showLookup(side) {
+  const inp = document.getElementById(`j-${side}`);
+  const dd  = document.getElementById(`ld-${side}`);
+  const q   = inp.value.trim().toLowerCase();
+  if(!q) { dd.style.display='none'; return; }
+  const res = ACCOUNTS.filter(a=>a.n.startsWith(q)||a.name.toLowerCase().includes(q)).slice(0,8);
+  if(!res.length) { dd.style.display='none'; return; }
+  dd.innerHTML = res.map(a=>`
+    <div class="lookup-item" onmousedown="selectAcc('${side}','${a.n}')">
+      <span class="li-num">${a.n}</span><span>${a.name}</span>
+      <span class="li-class">${CLASS_NAMES[a.area]}</span>
+    </div>`).join('');
+  dd.style.display='block';
+}
+function hideLookup(side,ms){ setTimeout(()=>{document.getElementById(`ld-${side}`).style.display='none';},ms); }
+function selectAcc(side,num){
+  const a=ACCOUNTS.find(x=>x.n===num);
+  document.getElementById(`j-${side}`).value=`${a.n} — ${a.name}`;
+  document.getElementById(`ld-${side}`).style.display='none';
+  document.getElementById(`hint-${side}`).textContent=`${CLASS_NAMES[a.area]} (${a.area})`;
+  document.getElementById(`hint-${side}`).style.color=side==='debit'?'var(--debit)':'var(--credit)';
+}
+function parseAcc(val){
+  const num=val.split('—')[0].trim();
+  return ACCOUNTS.find(a=>a.n===num)||ACCOUNTS.find(a=>a.name.toLowerCase().includes(val.toLowerCase()))||{n:val.slice(0,6),name:val,area:'?'};
+}
+
+// ── TVA CALC (form) ──
+function calcTva(){
+  const amt = parseFloat(document.getElementById('j-amount').value)||0;
+  const code = parseInt(document.getElementById('j-tva').value);
+  const badge = document.getElementById('tva-rate-badge');
+  const line  = document.getElementById('tva-amount-line');
+  if(!code||!TVA_MAPPING[code]){ badge.textContent='—'; line.textContent=''; return; }
+  const rate = TVA_MAPPING[code].rate;
+  if(rate===0||rate===100){ badge.textContent=rate===0?'0%':'Spécial'; line.textContent=''; return; }
+  const tvaAmt = amt * rate / 100;
+  badge.textContent = rate+'%';
+  line.textContent  = `TVA: ${fmt(tvaAmt)} CHF → TTC: ${fmt(amt+tvaAmt)} CHF`;
+}
+
+// ── TVA CALC (page 3) ──
+function calcTvaPage(){
+  const ht   = parseFloat(document.getElementById('tva-ht').value)||0;
+  const code = parseInt(document.getElementById('tva-code-sel').value);
+  const box  = document.getElementById('tva-calc-box');
+  const emp  = document.getElementById('tva-calc-empty');
+  const pre  = document.getElementById('tva-xml-preview');
+  const res  = document.getElementById('tva-page-result');
+  if(!code||!ht){ box.style.display='none'; emp.style.display='block'; res.style.display='none'; return; }
+  const v = TVA_MAPPING[code];
+  const rate = v.rate;
+  const tva  = rate===0?0:rate===100?ht:ht*rate/100;
+  const ttc  = rate===100?ht:ht+tva;
+  const accTva = v.dir==='purchases'?'1170/1171':v.dir==='sales'?'2200':'—';
+  box.style.display='block'; emp.style.display='none'; res.style.display='block';
+  document.getElementById('tc-ht').textContent = fmt(ht)+' CHF';
+  document.getElementById('tc-code').textContent = code+' — '+v.desc.slice(0,25);
+  document.getElementById('tc-rate').textContent = rate===100?'Spécial':rate+'%';
+  document.getElementById('tc-tva').textContent  = fmt(tva)+' CHF';
+  document.getElementById('tc-ttc').textContent  = fmt(ttc)+' CHF';
+  document.getElementById('tc-acc').textContent  = accTva+' '+( v.dir==='purchases'?'(1170 si 4xxx, sinon 1171)': v.dir==='sales'?'(TVA collectée)':'');
+  pre.innerHTML = `<span class="xc">&lt;!-- Écriture avec TVA code ${code} --&gt;</span>
+&lt;<span class="xt">Entry</span>&gt;
+  &lt;<span class="xt">Account</span>&gt;<span class="xv">XXXX</span>&lt;/<span class="xt">Account</span>&gt;
+  &lt;<span class="xt">Amount</span>&gt;<span class="xv">${fmt(ht)}</span>&lt;/<span class="xt">Amount</span>&gt;
+  &lt;<span class="xt">TaxCode</span>&gt;<span class="xv">${code}</span>&lt;/<span class="xt">TaxCode</span>&gt;
+  &lt;<span class="xt">TaxAmount</span>&gt;<span class="xv">${fmt(tva)}</span>&lt;/<span class="xt">TaxAmount</span>&gt;
+  &lt;<span class="xt">TotalAmount</span>&gt;<span class="xv">${fmt(ttc)}</span>&lt;/<span class="xt">TotalAmount</span>&gt;
+&lt;/<span class="xt">Entry</span>&gt;`;
+}
+
+// ── JOURNAL STATE ──
+let entries=[];
+const fmt = n => n.toLocaleString('fr-CH',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+function addEntry(){
+  const date=document.getElementById('j-date').value;
+  const desc=document.getElementById('j-desc').value.trim();
+  const amt=parseFloat(document.getElementById('j-amount').value);
+  const dv=document.getElementById('j-debit').value.trim();
+  const cv=document.getElementById('j-credit').value.trim();
+  const tvaCode=parseInt(document.getElementById('j-tva').value)||null;
+  if(!date||!amt||!dv||!cv){alert('Remplir tous les champs obligatoires');return;}
+  const da=parseAcc(dv), ca=parseAcc(cv);
+  const tvaRate=tvaCode&&TVA_MAPPING[tvaCode]?TVA_MAPPING[tvaCode].rate:0;
+  const tvaAmt=(!tvaRate||tvaRate===100)?0:amt*tvaRate/100;
+  entries.push({id:Date.now(),date,desc,da,ca,amount:amt,tvaCode,tvaRate,tvaAmt});
+  ['j-desc','j-amount'].forEach(id=>document.getElementById(id).value='');
+  ['j-debit','j-credit'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('j-tva').value='';
+  document.getElementById('tva-rate-badge').textContent='—';
+  document.getElementById('tva-amount-line').textContent='';
+  document.getElementById('hint-debit').textContent='';
+  document.getElementById('hint-credit').textContent='';
+  render();
+}
+
+function clearAll(){
+  if(entries.length&&!confirm('Effacer tout ?'))return;
+  entries=[];render();
+}
+
+function render(){
+  renderJournal(); renderTForm(); renderLedgers(); renderSummary();
+}
+
+// ── TVA ACCOUNT LOGIC ──
+// 1170 = TVA déduct. pour comptes 4xxx (codes 111,116,112,131,132,136)
+// 1171 = TVA déduct. pour autres comptes (idem codes)
+// 2200 = TVA collectée (codes 300,311,312,511,512 etc.)
+const TVA_DEDUCT_CODES = [111,116,112,131,132,136,511,512];
+const TVA_COLLECT_CODES = [131,132,141,142,144,311,312,121,122,115,125,300];
+
+function getTvaAccount(tvaCode, debitAccNum, creditAccNum) {
+  if(!tvaCode) return null;
+  const v = TVA_MAPPING[tvaCode];
+  if(!v) return null;
+  if(v.dir === 'zero') return null;
+
+  // TVA collectée → 2200 UNIQUEMENT si comptes 3xxx ou 1100 sont impliqués
+  // (vente de prestations/marchandises ou créance client)
+  if(v.dir === 'sales' || TVA_COLLECT_CODES.includes(Number(tvaCode))) {
+    const d = debitAccNum  || '';
+    const c = creditAccNum || '';
+    const involves3xxx = d.startsWith('3') || c.startsWith('3');
+    const involves1100 = d === '1100' || c === '1100';
+    if(involves3xxx || involves1100) return '2200';
+    return null; // pas de TVA collectée si pas de compte vente/client
+  }
+
+  // TVA déductible → 1170 si compte débité = 4xxx, sinon 1171
+  if(v.dir === 'purchases' || TVA_DEDUCT_CODES.includes(Number(tvaCode))) {
+    return (debitAccNum && debitAccNum.startsWith('4')) ? '1170' : '1171';
+  }
+
+  return null;
+}
+
+// ── T-FORM RENDERER ──
+// ── T-FORM + XML RENDERER ──
+// Helper: build XML string for one entry
+function buildEntryXml(e, idx, total) {
+  const tvaInfo   = e.tvaCode ? TVA_MAPPING[e.tvaCode] : null;
+  const tvaAccNum = getTvaAccount(e.tvaCode, e.da.n, e.ca.n);
+  const hasTva    = e.tvaAmt > 0 && tvaAccNum;
+  const isDeduct  = tvaInfo && tvaInfo.dir === 'purchases';
+  const ttc       = e.amount + e.tvaAmt;
+  const taxAccXml = tvaAccNum || '';
+  const taxKeyAmt = hasTva ? `-${fmt(e.tvaAmt)}` : '0.00';
+  const amtTTC    = hasTva ? fmt(ttc) : fmt(e.amount);
+
+  const T  = (n) => `&lt;<span class="xt">${n}</span>&gt;`;
+  const TC = (n) => `&lt;/<span class="xt">${n}</span>&gt;`;
+  const TV = (n) => `&lt;<span class="xtva">${n}</span>&gt;`;
+  const TVC= (n) => `&lt;/<span class="xtva">${n}</span>&gt;`;
+  const v  = (s) => `<span class="xv">${s}</span>`;
+  const vt = (s) => `<span class="xtva">${s}</span>`;
+  const c  = (s) => `<span class="xc">${s}</span>`;
+  const D_ = `<span class="xh xd">D</span>`;
+  const C_ = `<span class="xh xcr">C</span>`;
+
+  return `${c('&lt;!-- ════ Écriture ' + (idx+1) + '/' + total + ' — ' + (e.desc||'') + ' — ' + e.date + ' ════ --&gt;')}
+${c('&lt;!-- ⚠️  FILTRE Python : ignorer si &lt;apt:Type&gt;Reversal&lt;/apt:Type&gt;             --&gt;')}
+${c('&lt;!--    Type=Reversal = écriture EXTOURNÉE (annulée/effacée) → exclure du solde --&gt;')}
+${c('&lt;!--    Seuls Type=Normal sont à intégrer dans les calculs de solde             --&gt;')}
+${T('apt:Entry')}
+
+  ${c('&lt;!-- ── CollectiveInformation ──────────────────────── --&gt;')}
+  ${c('&lt;!-- Compte PRINCIPAL — DebitCredit=D = débité --&gt;')}
+  ${T('apt:CollectiveInformation')}
+    ${T('apt:EntryType')}${v('S')}${TC('apt:EntryType')}  ${c('&lt;!-- S=simple, K=collectif --&gt;')}
+    ${T('apt:DebitCredit')}${D_}${TC('apt:DebitCredit')}
+    ${T('apt:EntryDate')}${v(e.date)}${TC('apt:EntryDate')}
+    ${T('apt:AmountData')}
+      ${T('apt:Currency')}${v('CHF')}${TC('apt:Currency')}
+      ${T('apt:Amount')}${v(amtTTC + '00000000')}${TC('apt:Amount')}  ${c('&lt;!-- TTC --&gt;')}
+    ${TC('apt:AmountData')}
+    ${T('apt:KeyAmount')}${v(amtTTC)}${TC('apt:KeyAmount')}
+    ${T('apt:Account')}${v(e.da.n)}${TC('apt:Account')}  ${c('&lt;!-- ' + e.da.name + ' --&gt;')}
+    ${hasTva
+      ? T('apt:TaxAccount') + vt(taxAccXml) + TC('apt:TaxAccount') + `  ${c('&lt;!-- sous-compte TVA --&gt;')}`
+      : T('apt:TaxAccount') + v(e.da.n) + TC('apt:TaxAccount')}
+    ${T('apt:Text1')}${v(e.desc||'')}${TC('apt:Text1')}  ${c('&lt;!-- description principale --&gt;')}
+    ${T('apt:Text2')}${v('')}${TC('apt:Text2')}  ${c('&lt;!-- description secondaire --&gt;')}
+  ${TC('apt:CollectiveInformation')}
+
+  ${c('&lt;!-- ── SingleInformation ──────────────────────────── --&gt;')}
+  ${c('&lt;!-- Compte CONTREPARTIE — peut être multiple si écriture collective --&gt;')}
+  ${T('apt:SingleInformation')}
+    ${T('apt:DebitCredit')}${C_}${TC('apt:DebitCredit')}  ${c('&lt;!-- C = crédité (contrepartie) --&gt;')}
+    ${T('apt:EntryDate')}${v(e.date)}${TC('apt:EntryDate')}
+    ${T('apt:AmountData')}
+      ${T('apt:Currency')}${v('CHF')}${TC('apt:Currency')}
+      ${T('apt:Amount')}${v(amtTTC + '00000000')}${TC('apt:Amount')}
+    ${TC('apt:AmountData')}
+    ${T('apt:KeyAmount')}${v(amtTTC)}${TC('apt:KeyAmount')}
+    ${T('apt:Account')}${v(e.ca.n)}${TC('apt:Account')}  ${c('&lt;!-- ' + e.ca.name + ' --&gt;')}
+    ${hasTva
+      ? T('apt:TaxAccount') + vt(taxAccXml) + TC('apt:TaxAccount') + `  ${c('&lt;!-- sous-compte TVA --&gt;')}`
+      : T('apt:TaxAccount') + v('0') + TC('apt:TaxAccount')}
+    ${hasTva ? `${TV('apt:TaxData')}
+      ${T('apt:TaxIncluded')}${vt('I')}${TC('apt:TaxIncluded')}  ${c('&lt;!-- I=incluse, E=exclusive --&gt;')}
+      ${T('apt:TaxType')}${vt('1')}${TC('apt:TaxType')}
+      ${T('apt:UseCode')}${vt('1')}${TC('apt:UseCode')}
+      ${T('apt:AmountData')}
+        ${T('apt:Currency')}${v('CHF')}${TC('apt:Currency')}
+        ${T('apt:Amount')}${vt('0.00000000')}${TC('apt:Amount')}
+      ${TC('apt:AmountData')}
+      ${T('apt:KeyAmount')}${vt(taxKeyAmt)}${TC('apt:KeyAmount')}  ${c('&lt;!-- montant TVA négatif = déduit du TTC --&gt;')}
+      ${T('apt:TaxRate')}${vt(e.tvaRate + '.00000000')}${TC('apt:TaxRate')}
+      ${T('apt:TaxCoefficient')}${vt('100.00000000')}${TC('apt:TaxCoefficient')}
+      ${T('apt:Country')}${vt('CH')}${TC('apt:Country')}
+      ${T('apt:TaxCode')}${vt(e.tvaCode)}${TC('apt:TaxCode')}  ${c('&lt;!-- code TVA Abacus --&gt;')}
+    ${TVC('apt:TaxData')}` : ''}
+    ${T('apt:Text1')}${v(e.desc||'')}${TC('apt:Text1')}
+    ${hasTva ? `${T('apt:TaxAccountNr2')}${vt(taxAccXml)}${TC('apt:TaxAccountNr2')}  ${c('&lt;!-- confirme TaxAccount --&gt;')}` : ''}
+  ${TC('apt:SingleInformation')}
+
+${TC('apt:Entry')}`;
+}
+
+function renderTForm() {
+  const tSide   = document.getElementById('t-side-content');
+  const xmlSide = document.getElementById('xml-preview-content');
+  const dot     = document.getElementById('t-dot');
+
+  if(!entries.length){
+    dot.classList.remove('active');
+    tSide.innerHTML   = `<div style="display:flex;align-items:center;justify-content:center;height:100%;min-height:160px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;text-align:center;line-height:1.8">Saisir une écriture<br>pour voir la forme en T</div>`;
+    xmlSide.innerHTML = `<div class="xml-empty">&lt;!-- XML Abacus --&gt;<br>Apparaît ici après saisie</div>`;
+    return;
+  }
+
+  dot.classList.add('active');
+
+  // ── T-FORM: toujours la dernière écriture ──
+  const e         = entries[entries.length - 1];
+  const tvaInfo   = e.tvaCode ? TVA_MAPPING[e.tvaCode] : null;
+  const tvaAccNum = getTvaAccount(e.tvaCode, e.da.n, e.ca.n);
+  const hasTva    = e.tvaAmt > 0 && tvaAccNum;
+  const isDeduct  = tvaInfo && tvaInfo.dir === 'purchases';
+
+  const clMap     = {A:'cl-A',B:'cl-B',C:'cl-C',D:'cl-D',E:'cl-E'};
+  const areaNames = {A:'Actif',B:'Passif',C:'Charges',D:'Produits',E:'Clôture'};
+
+  const blocks = [];
+  // Block 1: compte principal (débité)
+  blocks.push({
+    acc: e.da,
+    debits:  [{amt: e.amount, label: e.desc||'Mouvement principal'}],
+    credits: [],
+    isTva: false
+  });
+  // Block 2: contrepartie (créditée) — montant TTC si TVA déductible
+  const contrAmt = (hasTva && isDeduct) ? e.amount + e.tvaAmt : e.amount;
+  blocks.push({
+    acc: e.ca,
+    debits:  [],
+    credits: [{amt: contrAmt, label: e.da.n + ' — ' + (e.desc||'contrepartie')}],
+    isTva: false
+  });
+  // Block 3: compte TVA (séparé visuellement)
+  if(hasTva){
+    const tvName = tvaAccNum==='1170' ? 'TVA déductible (4xxx)' :
+                   tvaAccNum==='1171' ? 'TVA déductible (autres)' : 'TVA collectée (2200)';
+    const tvArea = (tvaAccNum==='1170'||tvaAccNum==='1171') ? 'A' : 'B';
+    blocks.push({
+      acc: {n: tvaAccNum, name: tvName, area: tvArea},
+      debits:  isDeduct ? [{amt: e.tvaAmt, label: 'TVA '+e.tvaRate+'% code '+e.tvaCode}] : [],
+      credits: !isDeduct ? [{amt: e.tvaAmt, label: 'TVA '+e.tvaRate+'% code '+e.tvaCode}] : [],
+      isTva: true
+    });
+  }
+
+  // Numéro de l'écriture affichée
+  const eIdx = entries.length;
+
+  let tHtml = `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+    <span style="background:var(--accent);color:#fff;padding:2px 8px;border-radius:2px">#${eIdx}</span>
+    <span>${e.date}</span>
+    <span style="color:var(--text)">${e.desc||''}</span>
+  </div>`;
+  tHtml += '<div class="t-accounts-wrap">';
+
+  blocks.forEach((blk, idx) => {
+    const tD  = blk.debits.reduce((s,r)=>s+r.amt,0);
+    const tC  = blk.credits.reduce((s,r)=>s+r.amt,0);
+    const sol = tD - tC;
+    const sc  = sol>0?'deb':'cred';
+    const scTxt = sol>0?'Solde débiteur':'Solde créditeur';
+    if(idx>0) tHtml += '<hr class="tva-t-separator">';
+    tHtml += `
+    <div class="t-account-block">
+      <div class="t-acc-name">
+        <span style="font-size:1rem;font-weight:700">${blk.acc.n}</span>
+        <span style="color:var(--muted);font-weight:400;font-size:12px">${blk.acc.name}</span>
+        <span class="t-acc-badge ${clMap[blk.acc.area]||'cl-E'}">${areaNames[blk.acc.area]||blk.acc.area}</span>
+        ${blk.isTva?'<span style="font-size:9px;background:#fef9c3;color:#854d0e;padding:2px 6px;border-radius:2px;font-weight:600">TVA</span>':''}
+      </div>
+      <div class="t-grid">
+        <div class="t-col-head dh">Débit</div>
+        <div class="t-divider-v"></div>
+        <div class="t-col-head ch">Crédit</div>
+        <div class="t-col-body">
+          ${blk.debits.map(r=>`<div class="t-entry-row d-row"><span class="te-lbl">${r.label}</span><span class="te-amt">${fmt(r.amt)}</span></div>`).join('')||'<div style="color:var(--muted);font-size:10px;padding:4px 0">—</div>'}
+        </div>
+        <div class="t-divider-v"></div>
+        <div class="t-col-body">
+          ${blk.credits.map(r=>`<div class="t-entry-row c-row"><span class="te-lbl">${r.label}</span><span class="te-amt">${fmt(r.amt)}</span></div>`).join('')||'<div style="color:var(--muted);font-size:10px;padding:4px 0">—</div>'}
+        </div>
+      </div>
+      <div class="t-foot">
+        <div class="t-foot-cell d">${tD>0?fmt(tD):'—'}</div>
+        <div style="background:var(--border2);width:3px"></div>
+        <div class="t-foot-cell c">${tC>0?fmt(tC):'—'}</div>
+      </div>
+      <div class="t-solde-bar ${sc}">${scTxt} : ${fmt(Math.abs(sol))} CHF</div>
+    </div>`;
+  });
+  tHtml += '</div>';
+  tSide.innerHTML = tHtml;
+
+  // ── XML: TOUTES les écritures, empilées, avec séparateur ──
+  const xmlParts = entries.map((entry, i) => buildEntryXml(entry, i, entries.length));
+  const separator = `\n\n<span style="color:#1e3a5f;font-size:10px;letter-spacing:0.1em">` +
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>\n\n`;
+  xmlSide.innerHTML = xmlParts.join(separator);
+
+  // Scroll vers le bas pour voir la dernière écriture
+  xmlSide.scrollTop = xmlSide.scrollHeight;
+}
+
+function renderJournal(){
+  const body=document.getElementById('journal-body');
+  if(!entries.length){body.innerHTML='<div class="empty-state">Aucune écriture enregistrée</div>';return;}
+  let h='';
+  entries.forEach(e=>{
+    const tvaTag=e.tvaCode?`<span class="tva-tag">TVA ${e.tvaCode}</span>`:'';
+    h+=`
+      <div class="log-row">
+        <span class="dim">${e.date}</span>
+        <span style="font-weight:600;color:var(--accent)">${e.da.n}</span>
+        <span class="dim">${e.desc}${tvaTag}</span>
+        <span class="dc">${fmt(e.amount)}</span>
+        <span class="dim">—</span>
+      </div>
+      <div class="log-row">
+        <span></span>
+        <span style="color:var(--credit);padding-left:14px">${e.ca.n}</span>
+        <span class="dim" style="color:#aaa">  ⤷ ${e.ca.name}</span>
+        <span class="dim">—</span>
+        <span class="cc">${fmt(e.amount)}</span>
+      </div>`;
+    if(e.tvaAmt>0){
+      const tvAcc = getTvaAccount(e.tvaCode, e.da.n, e.ca.n) || (e.da.area==='C'?'1171':'2200');
+      h+=`
+      <div class="log-row" style="background:#f0fdf4">
+        <span></span>
+        <span style="color:var(--tva-green)">${tvAcc}</span>
+        <span style="font-size:11px;color:var(--tva-green)">TVA ${e.tvaRate}% — code ${e.tvaCode}</span>
+        <span style="color:var(--tva-green);text-align:right">${fmt(e.tvaAmt)}</span>
+        <span class="dim">—</span>
+      </div>`;
+    }
+  });
+  body.innerHTML=h;
+}
+
+function renderLedgers(){
+  const accMap={};
+  entries.forEach(e=>{
+    [{acc:e.da,side:'D',amt:e.amount},{acc:e.ca,side:'C',amt:e.amount}].forEach(({acc,side,amt})=>{
+      const k=acc.n;
+      if(!accMap[k])accMap[k]={acc,rows:[]};
+      accMap[k].rows.push({date:e.date,desc:e.desc,contra:side==='D'?e.ca.n:e.da.n,debit:side==='D'?amt:0,credit:side==='C'?amt:0});
+    });
+  });
+  const keys=Object.keys(accMap).sort();
+  const sec=document.getElementById('ledgers-section');
+  if(!keys.length){sec.innerHTML='<div class="empty-state" style="background:white;border:1px solid var(--border);border-radius:4px;padding:32px">Les tableaux apparaissent ici après saisie</div>';return;}
+  sec.innerHTML=keys.map(k=>{
+    const {acc,rows}=accMap[k];
+    const sorted=[...rows].sort((a,b)=>a.date.localeCompare(b.date));
+    let rD=0,rC=0;
+    const rowsHtml=sorted.map(r=>{
+      rD+=r.debit;rC+=r.credit;
+      const s=rD-rC; const sc=s>0?'sp':s<0?'sn':'sz';
+      return `<tr>
+        <td class="dim">${r.date}</td>
+        <td style="color:var(--accent)">${r.contra}</td>
+        <td class="dim">${r.desc||'—'}</td>
+        <td class="td-d">${r.debit>0?fmt(r.debit):'—'}</td>
+        <td class="td-c">${r.credit>0?fmt(r.credit):'—'}</td>
+        <td class="td-r ${sc}">${fmt(s)}</td>
+      </tr>`;
+    }).join('');
+    const tD=sorted.reduce((s,r)=>s+r.debit,0);
+    const tC=sorted.reduce((s,r)=>s+r.credit,0);
+    const sol=tD-tC;
+    const sc=sol>0?'sp':sol<0?'sn':'sz';
+    const st=sol>0?'débiteur':sol<0?'créditeur':'nul';
+    const cl={A:'cl-A',B:'cl-B',C:'cl-C',D:'cl-D',E:'cl-E'}[acc.area]||'cl-E';
+    return `<div class="ledger">
+      <div class="ledger-header">
+        <div class="ledger-meta">
+          <span class="acc-number">${acc.n}</span>
+          <span class="acc-name">${acc.name}</span>
+          <span class="acc-class ${cl}">${CLASS_NAMES[acc.area]||acc.area}</span>
+        </div>
+        <div class="solde-box">
+          <div class="solde-lbl">Solde ${st}</div>
+          <div class="solde-val ${sc}">${fmt(Math.abs(sol))} CHF</div>
+        </div>
+      </div>
+      <table class="led-table">
+        <thead><tr>
+          <th>Date</th><th>Contrepartie</th><th>Description</th>
+          <th class="r" style="color:var(--debit)">Débit</th>
+          <th class="r" style="color:var(--credit)">Crédit</th>
+          <th class="r">Solde cumulé</th>
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <div class="led-foot">
+        <span>TOTAL</span>
+        <span class="lft-d">${fmt(tD)}</span>
+        <span class="lft-c">${fmt(tC)}</span>
+        <span class="lft-s ${sc}">${fmt(sol)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderSummary(){
+  const bar=document.getElementById('summary-bar');
+  if(!entries.length){bar.style.display='none';return;}
+  bar.style.display='flex';
+  const tD=entries.reduce((s,e)=>s+e.amount,0);
+  const tC=entries.reduce((s,e)=>s+e.amount,0);
+  const ok=Math.abs(tD-tC)<0.001;
+  document.getElementById('s-count').textContent=entries.length;
+  document.getElementById('s-deb').textContent=fmt(tD);
+  document.getElementById('s-cred').textContent=fmt(tC);
+  const sb=document.getElementById('s-bal');
+  sb.textContent=ok?'✓ Équilibré':'✗ Déséquilibré';
+  sb.style.color=ok?'var(--debit)':'var(--credit)';
+}
+
+// ── DEMO ──
+function loadDemo(){
+  entries=[
+    {id:1,date:'2025-01-05',desc:'Versement client Dupont SA',da:{n:'1020',name:'Banque UBS',area:'A'},ca:{n:'1100',name:'Créances clients',area:'A'},amount:5000,tvaCode:null,tvaRate:0,tvaAmt:0},
+    {id:2,date:'2025-01-10',desc:'Paiement loyer janvier',da:{n:'6000',name:'Loyers',area:'C'},ca:{n:'1020',name:'Banque UBS',area:'A'},amount:2500,tvaCode:511,tvaRate:8.1,tvaAmt:202.5},
+    {id:3,date:'2025-01-15',desc:'Facture client Martin AG',da:{n:'1100',name:'Créances clients',area:'A'},ca:{n:'3400',name:'Prestations de services',area:'D'},amount:8200,tvaCode:131,tvaRate:8.1,tvaAmt:664.2},
+    {id:4,date:'2025-01-20',desc:'Salaires janvier',da:{n:'5200',name:'Salaires bruts',area:'C'},ca:{n:'1020',name:'Banque UBS',area:'A'},amount:12000,tvaCode:null,tvaRate:0,tvaAmt:0},
+    {id:5,date:'2025-01-28',desc:'Encaissement Martin AG',da:{n:'1020',name:'Banque UBS',area:'A'},ca:{n:'1100',name:'Créances clients',area:'A'},amount:8200,tvaCode:null,tvaRate:0,tvaAmt:0},
+  ];
+  render();
+}
+
+// ── CHARTS (page XML) ──
+function buildCharts(){
+  const qtrs=['T1 2023','T2 2023','T3 2023','T4 2023','T1 2024','T2 2024','T3 2024','T4 2024'];
+
+  new Chart(document.getElementById('chart-liquidites'),{
+    type:'bar',
+    data:{
+      labels:qtrs,
+      datasets:[{
+        label:'Solde 10XX (Σ Débit − Σ Crédit)',
+        data:[420,510,390,640,580,670,780,950],
+        backgroundColor:'#166534',borderRadius:3
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>v+'K'}}}}
+  });
+
+  new Chart(document.getElementById('chart-depenses'),{
+    type:'bar',
+    data:{
+      labels:qtrs,
+      datasets:[
+        {label:'Entrées (Débit)',data:[680,720,650,850,780,820,900,1100],backgroundColor:'#166534',borderRadius:3},
+        {label:'Sorties (Crédit)',data:[560,610,590,780,640,710,750,980],backgroundColor:'#b03030',borderRadius:3}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10}}}},scales:{y:{ticks:{callback:v=>v+'K'}}}}
+  });
+
+  new Chart(document.getElementById('chart-charges'),{
+    type:'doughnut',
+    data:{
+      labels:['52 Salaires','60 Loyers','65 IT & Admin','66 Marketing','62 Véhicules','Autres'],
+      datasets:[{
+        data:[62,12,8,5,4,9],
+        backgroundColor:['#1d4ed8','#166534','#7c3aed','#b45309','#0369a1','#6b7280'],
+        borderWidth:2,borderColor:'#fff'
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:10}}}}}
+  });
+}
+
+// ── INIT ──
+document.getElementById('j-date').value=new Date().toISOString().split('T')[0];
+buildTvaCards();
+// charts after a short delay to ensure canvas is ready
+setTimeout(buildCharts,100);
+</script>
+
+</body>
+</html>
