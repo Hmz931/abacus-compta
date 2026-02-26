@@ -468,6 +468,204 @@ input:focus, select:focus { border-color: var(--accent); background: #fff; }
   .entry-form { position: static; }
   .preview-body { grid-template-columns: 1fr; }
   .t-side { border-right: none; border-bottom: 1px solid var(--border); }
+  .demo-split { grid-template-columns: 1fr !important; }
+}
+
+/* ── PAGE 4 : DONNÉES RÉELLES ── */
+.demo-page { background: var(--bg); }
+.demo-intro {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 18px 24px;
+  margin-bottom: 24px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text);
+}
+.demo-intro strong { color: var(--accent); }
+.demo-entry-nav {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.demo-entry-btn {
+  padding: 8px 16px;
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  background: #fff;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--muted);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.demo-entry-btn:hover { border-color: var(--accent); color: var(--accent); }
+.demo-entry-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.demo-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.demo-panel-hdr {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 10px 16px;
+  background: #f4f3f0;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.demo-panel-hdr .badge {
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 2px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.badge-xlsx { background: #dcfce7; color: #166534; }
+.badge-xml  { background: #dbeafe; color: #1e40af; }
+
+/* Excel table */
+.demo-xlsx-wrap {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.xlsx-scroll { overflow-x: auto; }
+.xlsx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+}
+.xlsx-table th {
+  background: #f0f4ff;
+  color: #1e40af;
+  font-weight: 700;
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 2px solid #bfdbfe;
+  white-space: nowrap;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+.xlsx-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #f0ede8;
+  white-space: nowrap;
+  font-size: 11px;
+  vertical-align: top;
+}
+.xlsx-table tr:last-child td { border-bottom: none; }
+.xlsx-table tr.row-coll td { background: #f8faff; }
+.xlsx-table tr.row-single td { background: #fff; }
+.xlsx-table td.col-key {
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+.xlsx-table td.col-d { color: var(--debit); font-weight: 600; }
+.xlsx-table td.col-c { color: var(--credit); font-weight: 600; }
+.xlsx-table td.col-tva { color: #854d0e; background: #fefce8 !important; }
+.xlsx-table td.col-acc { font-weight: 700; }
+
+/* annotation rows */
+.anno-row td {
+  background: #f0f9ff !important;
+  color: #0369a1;
+  font-size: 10px;
+  font-style: italic;
+  padding: 3px 10px !important;
+  border-bottom: 1px dashed #bae6fd !important;
+}
+.anno-row td:first-child { font-weight: 700; font-style: normal; }
+
+/* XML right panel */
+.demo-xml-wrap {
+  background: var(--code-bg);
+  border: 1px solid #1e3a5f;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.demo-xml-body {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  line-height: 1.9;
+  padding: 16px 20px;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 800px;
+  color: #94a3b8;
+  white-space: pre;
+}
+/* highlight boxes for key fields */
+.hl-box {
+  display: inline-block;
+  background: #1e3a5f;
+  border-left: 3px solid;
+  padding: 0 6px;
+  border-radius: 0 3px 3px 0;
+}
+.hl-debit  { border-color: var(--debit);  }
+.hl-credit { border-color: var(--credit); }
+.hl-tva    { border-color: #f59e0b; }
+.hl-key    { border-color: #7c3aed; }
+
+/* mapping arrows between panels */
+.demo-mapping-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+}
+.demo-mapping-row .arrow { color: var(--muted); font-size: 14px; }
+.demo-footer {
+  margin-top: 24px;
+  padding: 16px 20px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+.demo-footer strong { color: var(--text); }
+.demo-legend {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.demo-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.demo-legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 </style>
 </head>
@@ -479,6 +677,7 @@ input:focus, select:focus { border-color: var(--accent); background: #fff; }
   <div class="nav-tab active" onclick="showPage('p-journal',this)">Journal</div>
   <div class="nav-tab" onclick="showPage('p-xml',this)">XML & Mapping</div>
   <div class="nav-tab" onclick="showPage('p-tva',this)">TVA</div>
+  <div class="nav-tab" onclick="showPage('p-demo',this)">Données réelles</div>
 </nav>
 
 <!-- ════════════════════════════════════════
@@ -1556,9 +1755,312 @@ function buildCharts(){
 // ── INIT ──
 document.getElementById('j-date').value=new Date().toISOString().split('T')[0];
 buildTvaCards();
-// charts after a short delay to ensure canvas is ready
 setTimeout(buildCharts,100);
 </script>
 
+<!-- ════════════════════════════════════════
+     PAGE 4 — DONNÉES RÉELLES (DEMO)
+════════════════════════════════════════ -->
+<div id="p-demo" class="page demo-page">
+<div class="page-inner">
+
+  <div class="demo-intro">
+    Ces 4 écritures proviennent de fichiers <strong>réels exportés depuis Abacus</strong> (exercice 2026).
+    Chaque écriture est présentée dans les <strong>deux formats</strong> produits par Abacus simultanément :
+    le tableau <strong>Excel/CSV</strong> (1 ligne par écriture, format plat) et le <strong>XML AbaConnect</strong>
+    (hiérarchique, avec CollectiveInformation + SingleInformation + TaxData).
+    Les champs en couleur montrent la correspondance directe entre les deux formats.
+  </div>
+
+  <!-- Navigation entre les 4 écritures -->
+  <div class="demo-entry-nav">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-right:4px">ÉCRITURE :</span>
+    <button class="demo-entry-btn active" onclick="showDemoEntry(0,this)">
+      #1 — 01.01.2026 · 6500 / 1020 · CHF 100
+    </button>
+    <button class="demo-entry-btn" onclick="showDemoEntry(1,this)">
+      #2 — 02.01.2026 · 4000 / 1020 · CHF 200
+    </button>
+    <button class="demo-entry-btn" onclick="showDemoEntry(2,this)">
+      #3 — 03.01.2026 · 1020 / 1100 · CHF 100
+    </button>
+    <button class="demo-entry-btn" onclick="showDemoEntry(3,this)">
+      #4 — 04.01.2026 · 1020 / 3400 · CHF 150
+    </button>
+  </div>
+
+  <!-- Split: Excel left / XML right -->
+  <div class="demo-split">
+
+    <!-- LEFT: Excel -->
+    <div>
+      <div class="demo-xlsx-wrap">
+        <div class="demo-panel-hdr">
+          <span class="badge badge-xlsx">XLSX</span>
+          Export Excel Abacus — 1 ligne = 1 écriture (format plat)
+        </div>
+        <div class="xlsx-scroll">
+          <div id="demo-xlsx-content"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: XML -->
+    <div>
+      <div class="demo-xml-wrap">
+        <div class="demo-panel-hdr">
+          <span class="badge badge-xml">XML</span>
+          AbaConnect FibuBooking — même écriture, format hiérarchique
+        </div>
+        <div class="demo-xml-body" id="demo-xml-content"></div>
+      </div>
+    </div>
+
+  </div><!-- /demo-split -->
+
+  <!-- Légende -->
+  <div class="demo-footer">
+    <strong>Correspondance des couleurs entre les deux formats :</strong>
+    <div class="demo-legend">
+      <div class="demo-legend-item">
+        <div class="demo-legend-dot" style="background:var(--debit)"></div>
+        <span>Compte débité (CollectiveInformation / colonne Compte)</span>
+      </div>
+      <div class="demo-legend-item">
+        <div class="demo-legend-dot" style="background:var(--credit)"></div>
+        <span>Compte crédité (SingleInformation / colonne Contrepartie)</span>
+      </div>
+      <div class="demo-legend-item">
+        <div class="demo-legend-dot" style="background:#f59e0b"></div>
+        <span>TVA — TaxData / colonnes Code TVA, Taux TVA, Montant TVA</span>
+      </div>
+      <div class="demo-legend-item">
+        <div class="demo-legend-dot" style="background:#7c3aed"></div>
+        <span>Compte TVA — TaxAccount / colonne Compte TVA + Contrepartie TVA</span>
+      </div>
+      <div class="demo-legend-item">
+        <div class="demo-legend-dot" style="background:#0369a1"></div>
+        <span>Métadonnées — JournalID, EntryNumber, BookingSource, CreationDate</span>
+      </div>
+    </div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <strong>⚠️ Points clés à retenir :</strong><br>
+      • Dans l'Excel, <code>DC = D</code> sur toutes les lignes — c'est le sens de la <em>CollectiveInformation</em> (débit principal). La contrepartie est déduite implicitement.<br>
+      • Le <code>Montant TVA</code> Excel est <strong>négatif</strong> (ex: <code>-7.49</code>) = <code>TaxData/KeyAmount</code> dans le XML : montant déduit du TTC.<br>
+      • <code>Compte TVA</code> Excel = <code>CollectiveInformation/TaxAccount</code> — <code>Contrepartie TVA</code> = <code>SingleInformation/TaxAccount</code> = <code>TaxAccountNr2</code>.
+    </div>
+  </div>
+
+</div><!-- /page-inner -->
+</div><!-- /p-demo -->
+
+<script>
+// ── PAGE 4 : DONNÉES DÉMO RÉELLES ──────────────────────────────────────────
+
+const DEMO_ENTRIES = [
+  {
+    id: 1, date: '2026-01-01', desc: 'Ecriture test 1',
+    debit: { acc: '6500', name: 'Frais téléphonie' },
+    credit: { acc: '1020', name: 'Banque UBS' },
+    amount: 100, taxCode: '141', taxRate: 8.1, taxAmt: -7.49,
+    taxAccColl: '6500',   // CollectiveInformation/TaxAccount
+    taxAccSI:   '1171',   // SingleInformation/TaxAccount = TaxAccountNr2
+    journalId: 'E26', entryNum: 1, bookingSrc: 'F', entryKey: '754b8720-ee12-f101-b391-bc2411935e6d',
+    note: 'Compte 6500 (frais non-4xxx) → TVA déductible 1171'
+  },
+  {
+    id: 2, date: '2026-01-02', desc: 'Ecriture test 2',
+    debit: { acc: '4000', name: 'Achats marchandises' },
+    credit: { acc: '1020', name: 'Banque UBS' },
+    amount: 200, taxCode: '131', taxRate: 8.1, taxAmt: -14.99,
+    taxAccColl: '4000',
+    taxAccSI:   '1170',
+    journalId: 'E26', entryNum: 2, bookingSrc: 'F', entryKey: 'ec3fb32b-ee12-f101-b391-bc2411935e6d',
+    note: 'Compte 4000 (achats 4xxx) → TVA déductible 1170'
+  },
+  {
+    id: 3, date: '2026-01-03', desc: 'Ecriture test 3',
+    debit: { acc: '1020', name: 'Banque UBS' },
+    credit: { acc: '1100', name: 'Créances clients' },
+    amount: 100, taxCode: '511', taxRate: 8.1, taxAmt: -7.49,
+    taxAccColl: '2200',
+    taxAccSI:   '2202',
+    journalId: 'E26', entryNum: 3, bookingSrc: 'F', entryKey: '123fbf38-ee12-f101-b391-bc2411935e6d',
+    note: 'Contrepartie 1100 (client) → TVA collectée 2200/2202'
+  },
+  {
+    id: 4, date: '2026-01-04', desc: 'Ecriture test 4',
+    debit: { acc: '1020', name: 'Banque UBS' },
+    credit: { acc: '3400', name: 'Ventes prestations' },
+    amount: 150, taxCode: '511', taxRate: 8.1, taxAmt: -11.24,
+    taxAccColl: '2200',
+    taxAccSI:   '3400',
+    journalId: 'E26', entryNum: 4, bookingSrc: 'F', entryKey: '5e41d846-ee12-f101-b391-bc2411935e6d',
+    note: 'Contrepartie 3400 (produit) → TVA collectée 2200'
+  }
+];
+
+// Excel columns to display (subset of the 64 real columns, the meaningful ones)
+const XLSX_COLS = [
+  { key: 'N°',           val: e => e.id,           note: 'N° enregistrement' },
+  { key: 'Date',         val: e => e.date.split('-').reverse().join('.'), note: 'EntryDate' },
+  { key: 'Compte',       val: e => e.debit.acc,    note: 'CollectiveInformation/Account (débité)', cls:'col-d' },
+  { key: 'Contrepartie', val: e => e.credit.acc,   note: 'SingleInformation/Account (crédité)',   cls:'col-c' },
+  { key: 'Texte1',       val: e => e.desc,         note: 'Text1' },
+  { key: 'Montant',      val: e => e.amount.toFixed(2), note: 'KeyAmount (TTC)' },
+  { key: 'DC',           val: e => 'D',            note: 'DebitCredit (sens CollectiveInfo)' },
+  { key: 'Code TVA',     val: e => e.taxCode,      note: 'TaxData/TaxCode', cls:'col-tva' },
+  { key: 'Taux TVA',     val: e => e.taxRate,      note: 'TaxData/TaxRate', cls:'col-tva' },
+  { key: 'TVA incl.',    val: e => 'I',            note: 'TaxData/TaxIncluded', cls:'col-tva' },
+  { key: 'Cpt TVA',      val: e => e.taxAccColl,   note: 'CollectiveInformation/TaxAccount', cls:'col-acc', style:'color:#7c3aed;font-weight:700' },
+  { key: 'Ctrp TVA',     val: e => e.taxAccSI,     note: 'SingleInformation/TaxAccount = TaxAccountNr2', cls:'col-acc', style:'color:#7c3aed;font-weight:700' },
+  { key: 'DC TVA',       val: e => e.taxAmt < 0 ? '2' : '1', note: 'Direction TVA (2=déductible/collectée)', cls:'col-tva' },
+  { key: 'Mnt TVA',      val: e => e.taxAmt.toFixed(2), note: 'TaxData/KeyAmount (négatif = déduit du TTC)', cls:'col-tva' },
+  { key: 'JournalID',    val: e => e.journalId,    note: 'Journal Abacus', style:'color:#0369a1' },
+  { key: 'N° écriture',  val: e => e.entryNum,     note: 'EntryNumber', style:'color:#0369a1' },
+  { key: 'Source',       val: e => e.bookingSrc,   note: 'BookingSource (F=fibu)', style:'color:#0369a1' },
+];
+
+function escX(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function buildXlsxTable(e) {
+  let rows = '';
+  XLSX_COLS.forEach(col => {
+    const val = col.val(e);
+    const st  = col.style ? ` style="${col.style}"` : '';
+    const cls = col.cls   ? ` class="${col.cls}"`   : '';
+    rows += `<tr class="row-coll">
+      <td class="col-key">${col.key}</td>
+      <td${cls}${st}>${escX(val)}</td>
+    </tr>
+    <tr class="anno-row">
+      <td>↳ champ XML</td>
+      <td>${col.note}</td>
+    </tr>`;
+  });
+  return `<table class="xlsx-table">
+    <thead><tr><th>Colonne Excel</th><th>Valeur</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function xmlTag(name, value, cls, comment) {
+  const open  = `&lt;<span class="xt">${name}</span>&gt;`;
+  const close = `&lt;/<span class="xt">${name}</span>&gt;`;
+  const val   = cls ? `<span class="${cls}">${escX(value)}</span>` : escX(value);
+  const cmt   = comment ? `  <span class="xc">&lt;!-- ${comment} --&gt;</span>` : '';
+  return `${open}${val}${close}${cmt}`;
+}
+function xt(n) { return `&lt;<span class="xt">${n}</span>&gt;`; }
+function xtc(n){ return `&lt;/<span class="xt">${n}</span>&gt;`; }
+function xv(v) { return `<span class="xv">${escX(v)}</span>`; }
+function xvt(v){ return `<span class="xtva">${escX(v)}</span>`; }
+function xvp(v){ return `<span style="color:#7c3aed">${escX(v)}</span>`; }
+function xvb(v){ return `<span style="color:#0369a1">${escX(v)}</span>`; }
+function xc(v) { return `<span class="xc">${v}</span>`; }
+function xd(v) { return `<span class="xh xd">${v}</span>`; }
+
+function buildXmlBlock(e) {
+  const tcc = (e.amount).toFixed(8);
+  const tlbl = e.taxAmt < 0 ? 'montant TVA négatif = déduit du TTC' : 'aucune TVA';
+
+  return `${xc('&lt;?xml version=\'1.0\' encoding=\'UTF-8\'?&gt;')}
+${xt('AbaConnectContainer')}
+  ${xt('Task')}
+
+    ${xc(`&lt;!-- ═══ Transaction id='${e.id}' — ${e.desc} ═══ --&gt;`)}
+    &lt;<span class="xt">Transaction</span> id=<span class="xv">'${e.id}'</span>&gt;
+    &lt;<span class="xt">Entry</span> mode=<span class="xv">'SAVE'</span>&gt;
+
+      ${xc('&lt;!-- ── CollectiveInformation ─────────────────────────────────── --&gt;')}
+      ${xc('&lt;!-- Compte PRINCIPAL = débité, DebitCredit=D                    --&gt;')}
+      ${xc('&lt;!-- TaxAccount → sous-compte TVA côté débit                     --&gt;')}
+      &lt;<span class="xt">CollectiveInformation</span> mode=<span class="xv">'SAVE'</span>&gt;
+        ${xmlTag('EntryType','S','xv','S=simple | K=collectif (multi-contreparties)')}
+        ${xmlTag('Type','Normal','xv','Normal | Reversal = extournée → IGNORER')}
+        ${xt('DebitCredit')}${xd('D')}${xtc('DebitCredit')}  ${xc('&lt;!-- D = compte débité (sens principal) --&gt;')}
+        ${xmlTag('EntryDate', e.date, 'xv', 'date comptable — col. Date dans Excel')}
+        ${xt('AmountData')}&lt;<span class="xt">Currency</span>&gt;${xv('CHF')}${xtc('Currency')}&lt;<span class="xt">Amount</span>&gt;${xv(e.amount)}${xtc('Amount')}${xtc('AmountData')}
+        ${xmlTag('KeyAmount', e.amount, 'xv', 'montant TTC — col. Montant dans Excel')}
+        ${xt('Account')}<span class="xh xd">${e.debit.acc}</span>${xtc('Account')}  ${xc(`&lt;!-- ${e.debit.name} — col. Compte --&gt;`)}
+        ${xt('TaxAccount')}${xvp(e.taxAccColl)}${xtc('TaxAccount')}  ${xc('&lt;!-- col. Cpt TVA dans Excel --&gt;')}
+        ${xmlTag('Text1', e.desc, 'xv', 'col. Texte1')}
+        ${xvb(xmlTag('JournalID', e.journalId, 'xv', 'col. JournalID'))}
+        ${xvb(xmlTag('EntryNumber', e.entryNum, 'xv', 'col. N° écriture'))}
+        ${xvb(xmlTag('BookingSource', e.bookingSrc, 'xv', 'F=Fibu manuel, K=créanciers'))}
+        ${xvb(xmlTag('CreationDate', '2026-02-26', 'xv', 'date de saisie dans Abacus'))}
+      ${xtc('CollectiveInformation')}
+
+      ${xc('&lt;!-- ── SingleInformation ──────────────────────────────────────── --&gt;')}
+      ${xc('&lt;!-- Compte CONTREPARTIE = crédité                                --&gt;')}
+      ${xc('&lt;!-- TaxData TOUJOURS présent si TaxCode, même taux 0%            --&gt;')}
+      ${xc('&lt;!-- TaxAccount + TaxAccountNr2 = sous-compte TVA côté contrepartie --&gt;')}
+      &lt;<span class="xt">SingleInformation</span> mode=<span class="xv">'SAVE'</span>&gt;
+        ${xt('DebitCredit')}${xd('D')}${xtc('DebitCredit')}  ${xc('&lt;!-- ⚠️ même valeur que CollectiveInformation dans Abacus --&gt;')}
+        ${xmlTag('EntryDate', e.date, 'xv')}
+        ${xt('AmountData')}&lt;<span class="xt">Currency</span>&gt;${xv('CHF')}${xtc('Currency')}&lt;<span class="xt">Amount</span>&gt;${xv(e.amount)}${xtc('Amount')}${xtc('AmountData')}
+        ${xmlTag('KeyAmount', e.amount, 'xv')}
+        &lt;<span class="xt">Account</span>&gt;<span class="xh xcr">${e.credit.acc}</span>&lt;/<span class="xt">Account</span>&gt;  ${xc(`&lt;!-- ${e.credit.name} — col. Contrepartie --&gt;`)}
+        ${xt('TaxAccount')}${xvp(e.taxAccSI)}${xtc('TaxAccount')}  ${xc('&lt;!-- col. Ctrp TVA dans Excel --&gt;')}
+        ${xmlTag('Text1', e.desc, 'xv')}
+
+        ${xc('&lt;!-- ┌─ TaxData ─────────────────────────────────────────────── --&gt;')}
+        &lt;<span class="xtva">TaxData</span> mode=<span class="xv">'SAVE'</span>&gt;
+          ${xt('TaxIncluded')}<span class="xtva">I</span>${xtc('TaxIncluded')}  ${xc('&lt;!-- I = TVA incluse — col. TVA incl. --&gt;')}
+          ${xt('TaxType')}<span class="xtva">1</span>${xtc('TaxType')}
+          ${xt('UseCode')}<span class="xtva">1</span>${xtc('UseCode')}
+          &lt;<span class="xt">AmountData</span>&gt;&lt;<span class="xt">Amount</span>&gt;${xvt('0')}${xtc('Amount')}${xtc('AmountData')}  ${xc('&lt;!-- toujours 0 ici --&gt;')}
+          ${xt('KeyAmount')}${xvt(e.taxAmt.toFixed(2))}${xtc('KeyAmount')}  ${xc(`&lt;!-- ${tlbl} — col. Mnt TVA --&gt;`)}
+          ${xt('TaxRate')}${xvt(e.taxRate)}${xtc('TaxRate')}  ${xc('&lt;!-- col. Taux TVA --&gt;')}
+          ${xt('TaxCoefficient')}${xvt('100')}${xtc('TaxCoefficient')}
+          ${xt('Country')}${xvt('CH')}${xtc('Country')}
+          ${xt('TaxCode')}${xvt(e.taxCode)}${xtc('TaxCode')}  ${xc('&lt;!-- col. Code TVA --&gt;')}
+          ${xt('FlatRate')}${xvt('0')}${xtc('FlatRate')}
+          ${xt('Year')}${xvt('0')}${xtc('Year')}  ${xc('&lt;!-- 0 = date écriture, sinon année décompte TVA --&gt;')}
+          ${xt('Month')}${xvt('0')}${xtc('Month')}
+          ${xt('FundAccount')}${xvt('0')}${xtc('FundAccount')}
+          ${xt('FundContraAccount')}${xvt('0')}${xtc('FundContraAccount')}
+          ${xt('TaxDate')}${xvt('2023-06-30')}${xtc('TaxDate')}  ${xc('&lt;!-- date référence TVA --&gt;')}
+        ${xtc('TaxData')}
+        ${xc('&lt;!-- └─────────────────────────────────────────────────────────── --&gt;')}
+
+        ${xt('TaxAccountNr2')}${xvp(e.taxAccSI)}${xtc('TaxAccountNr2')}  ${xc('&lt;!-- confirme TaxAccount, = col. Ctrp TVA --&gt;')}
+      ${xtc('SingleInformation')}
+
+    ${xtc('Entry')}
+    &lt;/<span class="xt">Transaction</span>&gt;
+
+  ${xtc('Task')}
+${xtc('AbaConnectContainer')}
+
+${xc('&lt;!-- ── Note comptable ──────────────────── --&gt;')}
+${xc('&lt;!-- ' + e.note + ' --&gt;')}`;
+}
+
+let currentDemoIdx = 0;
+
+function showDemoEntry(idx, btn) {
+  currentDemoIdx = idx;
+  // update buttons
+  document.querySelectorAll('.demo-entry-btn').forEach((b,i) => {
+    b.classList.toggle('active', i === idx);
+  });
+  const e = DEMO_ENTRIES[idx];
+  document.getElementById('demo-xlsx-content').innerHTML = buildXlsxTable(e);
+  document.getElementById('demo-xml-content').innerHTML  = buildXmlBlock(e);
+}
+
+// Init page 4 on first show
+document.querySelector('[onclick="showPage(\'p-demo\',this)"]').addEventListener('click', () => {
+  if (currentDemoIdx === 0 && !document.getElementById('demo-xml-content').innerHTML) {
+    showDemoEntry(0, null);
+  }
+});
+// Also init immediately in case page loads directly
+document.addEventListener('DOMContentLoaded', () => showDemoEntry(0, null));
+setTimeout(() => showDemoEntry(0, null), 50);
+</script>
 </body>
 </html>
